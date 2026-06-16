@@ -26,6 +26,7 @@ description: >-
 - `nuxt.config.ts` / `nuxt.config.js` → 确认 `srcDir`、`components` 自动导入、`imports` 自动导入、`css` 全局样式、`modules` 启用的模块
 - `tsconfig.json` → 确认路径别名（`~/`、`@/`、`#imports`）
 - 根目录 ls → 确认是 Nuxt3 标准结构（`components/`、`pages/`、`composables/`、`server/`、`layouts/`）还是定制结构
+- **fe-project-init 项目** → 额外读 `src/config/design.ts`(端/设计稿/单位) 与 `src/config/env.ts`(域名);样式跟 `DESIGN.unit` 走(px / px→rem / rpx),布局用 `.page-container`(PC) 或全宽(移动)
 
 ### 2. 找一个"参照组件"（关键，决定代码风格）
 

@@ -98,6 +98,13 @@ description: >-
 
 不深扫无障碍——那是 a11y-check 的职责。这里只点最基础的。
 
+### 7. fe-project-init 项目约定（若存在 `src/config/design.ts`）
+
+- **端与单位**:PC 应用 `.page-container`(1200);移动 H5 Sass 应用 px→rem + `.mobile-container`(750);小程序用 `rpx`,不应混用 rem/pxtorem
+- **布局**:PC 内容是否错误全宽(缺 max-width:1200);移动是否缺 750 封顶居中
+- **env**:页面是否直接拼 `import.meta.env.VITE_API_*`,应走 `config/env.ts` 的 `getApiBase`
+- **请求**:是否绕过 `api/request.ts` 裸 axios/fetch(除 Next RSC 等合理例外)
+
 ---
 
 ## 输出格式（严格遵守）

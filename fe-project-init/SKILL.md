@@ -1,202 +1,302 @@
 ---
 name: fe-project-init
 description: >-
-  从 0 开始创建前端项目骨架,按问答确定技术栈,自动生成多域名接口拦截器(开发/生产环境变量)、
-  公共 Header/Footer/Popup 组件,可选会员状态管理。
+  从 0 开始创建前端项目骨架,按问答确定技术栈与端(PC/移动/小程序),自动生成多域名拦截器、
+  设计稿适配、Layout/公共组件,可选会员状态管理。
   Use when the user says "新建项目", "创建项目", "起一个项目", "从零搭项目",
   "初始化项目", "搭个前端架子", or /fe-project-init.
-  答完 7 个问题后自动一口气执行到底,不再二次确认。
+  答完 8 个问题后自动一口气执行到底,不再二次确认。
 ---
 
 # fe-project-init: 前端项目从零初始化
 
-职责：从 0 起一个能立即跑起来的前端项目骨架，覆盖技术栈选型 → 多域名拦截器（dev/prod 环境变量 + npm 命令切换）→ 公共组件 → 可选会员状态管理。
+职责：从 0 起一个能立即跑起来的前端项目骨架，覆盖端适配 → 多域名拦截器 → Layout/公共组件 → 路由 → 验证。
 
-**核心纪律**：**只问 7 个问题，答完立刻一口气跑到底**——脚手架、装依赖、写代码、跑 `dev` 验证，全程不暂停、不二次确认、不「要我继续吗」。只有 npm 权限/网络导致命令实在跑不通时，才停下来告诉用户缺什么。
+**核心纪律**：**只问 8 个问题，答完立刻一口气跑到底**——脚手架、装依赖、写代码、`dev` + `build` + 类型检查，全程不暂停、不二次确认。只有 npm 权限/网络实在跑不通时才停。
 
 ---
 
-## 启动：问答收集需求（只此一轮，答完即开工）
+## 框架 × 端 决策表（问答结束后按此执行,冲突时以问题 2「端」为准）
 
-进入 skill 后，**用 `AskUserQuestion` 一次发问、收齐 7 项核心信息**。
+| 端 | 允许框架 | 自动修正 | UI 库默认 | 样式默认 | 单位 |
+|----|---------|---------|----------|---------|------|
+| PC | Vue3+Vite / Nuxt3 / React+Vite / Next | 端=PC 时禁止 uni-app / 原生小程序 | Vue→Element Plus; React→无 | Sass | px, 主体 1200 |
+| 移动 H5 | Vue3+Vite / Nuxt3 | 端=移动 时框架应为 Vue 系;若选了 Next 改为 Vue3+Vite | Vant | Sass | Sass→px 转 rem; Tailwind→rem 配置 |
+| 小程序 | uni-app / 原生微信小程序 | 端=小程序 时框架必须是 uni-app 或原生,其他一律改 uni-app | uni-ui | Sass 或 CSS | rpx |
 
-**答完问题的同一轮回复里就开始执行步骤 1~6**，不要等用户说「开始吧」「继续」。中间**禁止**再 AskUserQuestion / 文字确认，包括但不限于：
-- 「确认一下用 Element Plus 吗?」
-- 「Header 导航写哪几个?」
-- 「要我继续生成组件吗?」
-- 「npm 装好了,接下来…」
+**Pinia / Zustand**：仅问题 7 选「是」时装;脚手架命令里的 `--pinia` 同理,没会员就不加。
 
-信息不全或用户答得含糊 → **按下方默认值自行决断**,写进最终报告即可,不要回头问。
+**Tailwind / UnoCSS + 移动 H5**：**禁止** postcss-pxtorem;改 Tailwind `theme.extend` 按 750 设计稿配 spacing/fontSize,或用 `rem` 单位直接写。
+
+---
+
+## 启动：问答收集需求（只此一轮,答完即开工）
+
+用 `AskUserQuestion` **一次**收齐 8 项。答完**同一轮**开始执行,禁止再确认。
+
+信息不全 → 用「默认值」表 + 决策表,写进最终报告。
 
 ### 问题 1：框架与渲染模式
 
 ```
-要哪种框架?
-- Vue3 + Vite (SPA,纯前端项目最常见)
-- Nuxt3 (Vue3 + SSR,要 SEO / 首屏性能)
-- React + Vite (SPA)
-- Next.js (React + SSR/SSG)
-- uni-app (跨端小程序 + H5)
-- 原生微信小程序
+Vue3 + Vite (SPA) / Nuxt3 (SSR) / React + Vite / Next.js / uni-app / 原生微信小程序
 ```
 
-### 问题 2:语言
+与问题 2 冲突时,**以问题 2 为准**自动修正(见决策表),不回头问。  
+若问题 2 已选「小程序」,本题可忽略,最终会改为 uni-app 或原生微信。
+
+### 问题 2：端类型（PC / 移动 / 小程序）
 
 ```
-TypeScript 还是 JavaScript? (推荐 TS)
+PC       — 设计稿 1920,主体 1200 居中,px
+移动 H5   — 设计稿 750,Sass 写 px 自动转 rem / Tailwind 配 rem
+小程序    — 设计稿 750,单位 rpx
 ```
 
-### 问题 3:样式方案
+### 问题 3：语言
 
-```
-样式用什么?
-- Sass / SCSS (推荐,支持嵌套、变量、mixin)
-- CSS (原生,简单项目够用)
-- Tailwind CSS (原子化,快但要适应)
-- UnoCSS (Tailwind 兼容 + 性能更好)
-```
+TypeScript(默认) / JavaScript
 
-### 问题 4:UI 组件库（按框架给候选）
+### 问题 4：样式方案
 
-- Vue3 / Nuxt3 → Element Plus / Vant (移动) / Naive UI / Nuxt UI
-- React / Next → Ant Design / MUI / shadcn-ui / Chakra
-- uni-app → uni-ui / uView
-- 「不用 UI 库」也是选项，告诉用户裸搭后续要自己写按钮/输入框等基础组件
+Sass / SCSS(默认) / CSS / Tailwind CSS / UnoCSS
 
-### 问题 5:接口域名（多域名）
+### 问题 5：UI 组件库
 
-```
-项目有几个接口域名? 请列出名称 + dev/prod 两套地址。
+按决策表默认;用户指定则覆盖。
 
-常见命名示例:
-- main   主业务 API   dev: https://dev-api.xxx.com    prod: https://api.xxx.com
-- user   用户中心     dev: https://dev-user.xxx.com   prod: https://user.xxx.com
-- upload 上传/文件     dev: https://dev-upload.xxx.com prod: https://upload.xxx.com
+### 问题 6：接口域名（多域名）
 
-至少 1 个,通常 2~4 个。名称用英文小写(main/user/upload/cms 等),会转成环境变量和代码常量。
-```
+名称 + dev/prod 两套地址。至少 1 个,通常 2~4 个(key: main/user/upload…)。未提供 → `main` + `user` 占位域名。
 
-用户只给 1 个域名 → 用 `main` 作为唯一 key。用户暂时没确定 → 生成 2 个占位域名(`main` + `user`),`.env` 里写 `https://dev-api.example.com` 等并加注释「请改成实际域名」。
+### 问题 7：会员管理
 
-### 问题 6:会员管理
+是 → Pinia(Vue) / Zustand(React) + 登录页 + 路由守卫  
+否 → 不加状态库
 
-```
-项目是否需要会员管理?(登录、注册、用户信息)
-- 是 → 会自动加 Pinia (Vue) / Zustand (React) 状态管理 + 登录态相关代码
-- 否 → 不加状态库,后续需要再装
-```
+### 问题 8：项目名 + 目录
 
-### 问题 7:项目名 + 目录
+项目名 + 创建路径(默认 `./<项目名>`)
 
-```
-项目名? (会用作 package.json 的 name 和目录名)
-在哪里创建? (默认当前目录的子目录,如 ./my-app)
-```
-
-### 默认值（用户没说清时直接用,不追问）
+### 默认值
 
 | 项 | 默认 |
 |----|------|
+| 端 | PC |
 | 语言 | TypeScript |
-| 样式 | Sass / SCSS |
-| UI 库 | Vue3/Nuxt → Element Plus；React/Next → 无；uni-app → uni-ui |
-| 域名 | `main` + `user` 两个占位域名 |
-| 项目目录 | 当前工作区下的 `./<项目名>` |
-| 移动端 Footer | uni-app / Vant → 自动生成 TabBar,不生成 Footer |
-
-**7 项收齐（或缺项已填默认）→ 立即进入执行,不停顿。**
+| 样式 | Sass |
+| UI 库 | 见决策表 |
+| 域名 | main + user 占位 |
+| 目录 | `./<项目名>` |
+| 包管理器 | npm(失败可试 pnpm) |
 
 ---
 
-## 执行：一口气跑到底（步骤 1→6 连续完成）
+## 执行清单（Agent 必须逐项完成,全部 ✓ 后再出报告）
 
-**执行模式**：自己在终端跑命令、写文件、装包、修报错,直到步骤 6 验证通过或遇到无法绕过的阻塞。每完成一步 silently 进入下一步,不要向用户汇报进度卡点。
+```
+□ 1. 脚手架非交互跑通 + npm install
+□ 2. .gitignore 含 .env.local / dist
+□ 3. config/design.ts 与端一致
+□ 4. 端适配: PC→layout 1200 | 移动 Sass→flexible+pxtorem+.mobile-container | 移动 Tailwind/UnoCSS→无 pxtorem | 小程序→rpx
+□ 5. .env.example + .env.development/.production(占位);真实密钥仅 .env.local
+□ 6. config/env.ts + types/api.d.ts + utils/message.ts
+□ 7. api/request.ts 多实例 + dev proxy(H5 Vite/Nuxt) 或直连(小程序)
+□ 8. UI 库已安装且已在 main.ts / nuxt.config / app.json 注册
+□ 9. layouts + Header/Footer 或 TabBar
+□ 10. 路由(按框架: router / pages / pages.json / app.json)
+□ 11. 会员模块(若选是)
+□ 12. 项目 README.md(短)
+□ 13. npm run dev + npm run build + 类型检查通过
+```
 
-### 步骤 1：脚手架初始化（用官方命令，不手搓）
+---
 
-按问答结果选命令：
+## 步骤 1：脚手架 + 基础工程
 
-| 框架 | 命令 |
-|------|------|
-| Vue3 + Vite | `npm create vue@latest <name> -- --ts --router --pinia` |
-| Nuxt3 | `npx nuxi@latest init <name>` |
-| React + Vite | `npm create vite@latest <name> -- --template react-ts` |
-| Next.js | `npx create-next-app@latest <name> --ts --app` |
-| uni-app | `npx degit dcloudio/uni-preset-vue#vite-ts <name>` |
+### 1.1 脚手架命令
 
-**先在终端跑命令、装依赖**，让脚手架先自己生成基础结构，再在上面叠加自定义代码——比手写每个文件可靠得多。
+| 框架 | 命令 | 备注 |
+|------|------|------|
+| Vue3 + Vite | `npm create vue@latest <name> -- --ts --router [--pinia]` | `--pinia` 仅会员=是 |
+| Nuxt3 | `npx nuxi@latest init <name>` | 后续加 pinia module(若会员=是) |
+| React + Vite | `npm create vite@latest <name> -- --template react-ts` | |
+| Next.js | `npx create-next-app@latest <name> --yes --ts --eslint --app --src-dir --import-alias "@/*"` | tailwind 与问题4冲突时去掉 --tailwind |
+| uni-app | `npx degit dcloudio/uni-preset-vue#vite-ts <name>` | |
+| 原生微信小程序 | 建标准目录 + `project.config.json` + `app.json` | 无 npm 脚手架时用最小结构 |
 
-脚手架命令尽量**非交互**（加 `--yes` / 默认值 flag）,避免卡在终端提问:
+非交互 flag 用尽;失败 → 换镜像 / `--legacy-peer-deps` / 删 lock 重装,仍失败才停。
 
-| 框架 | 非交互要点 |
-|------|-----------|
-| Vue3 + Vite | `-- --ts --router --pinia --eslint-with-prettier` 等全用 flag,不传则按问答结果补 |
-| Nuxt3 | `nuxi init` 后自动改配置,不等人选 template |
-| React + Vite | `--template react-ts` |
-| Next.js | `--yes` 或全 flag:`--ts --eslint --tailwind --app --src-dir --import-alias "@/*"` |
-| uni-app | degit 无交互 |
+### 1.2 `.gitignore`（立刻补）
 
-命令失败 → **先自行重试**（换镜像、`--legacy-peer-deps`、删 lock 重装）,仍不行才停下说明阻塞点;**不要**问「要我重试吗」。
+```
+node_modules
+dist
+.DS_Store
+*.local
+.env.local
+.env.*.local
+```
 
-### 步骤 2：环境变量、域名配置与拦截器（核心需求 ①）
+`.env.example` — **提交 git**,只列 key 与占位 URL,供团队复制。  
+`.env.development` / `.env.production` — 可提交,但**只用占位域名**,不要写密钥/内网地址。  
+`.env.local` / `.env.*.local` — **不提交**,放真实域名、token、密钥(Vite/Nuxt/Next 会自动 merge)。
 
-#### 2.1 目录约定
+加载顺序(Vite):`.env` → `.env.[mode]` → `.env.local` → `.env.[mode].local`(后者覆盖前者)。
+
+### 1.3 依赖（按端/框架按需装,不超额）
+
+| 用途 | 包 |
+|------|-----|
+| 请求 | axios(Vue/React/Next); uni-app 用 uni.request |
+| 移动 rem(Sass) | postcss postcss-pxtorem |
+| UI | element-plus / vant / @nuxt/ui 等 |
+| 会员持久化 | pinia-plugin-persistedstate / zustand persist |
+| Next dev:prod | env-cmd |
+| 类型检查 | vue-tsc(Vue) / tsc(React) |
+
+### 1.4 UI 库注册（装完必须能用,不只装包）
+
+| 框架 | UI 库 | 注册方式 |
+|------|-------|---------|
+| Vue3 + Vite | Element Plus | `main.ts`:`app.use(ElementPlus)` + `import 'element-plus/dist/index.css'`;或 `@element-plus/icons-vue` 按需 |
+| Vue3 + Vite | Vant(移动) | `app.use(Vant)` + `import 'vant/lib/index.css'`;或 `unplugin-vue-components` + `VantResolver` |
+| Nuxt3 | Element Plus | `@element-plus/nuxt` module 或 plugins/element-plus.client.ts |
+| Nuxt3 | Vant | `@vant/nuxt` 或 client plugin |
+| React | Ant Design | `ConfigProvider` 包根组件 + `import 'antd/dist/reset.css'` |
+| uni-app | uni-ui | `pages.json` easycom 或手动 import 组件 |
+
+**验证**:首页或 Header 里放一个 UI 库按钮(如 `<el-button>` / `<van-button>`),build 通过且组件非裸 HTML。
+
+---
+
+## 步骤 2：端适配与设计稿
+
+### 2.1 `src/config/design.ts`
+
+```ts
+export type Platform = 'pc' | 'mobile' | 'miniprogram'
+
+export const DESIGN = {
+  platform: 'pc' as Platform,
+  designWidth: 1920,      // PC:1920 | 移动&小程序:750
+  contentWidth: 1200,     // 仅 PC;其他 undefined
+  unit: 'px' as 'px' | 'px→rem' | 'rpx' | 'tailwind-rem',
+} as const
+```
+
+### 2.2 PC（1920 / 主体 1200）
+
+`src/styles/layout.scss`:
+
+```scss
+$content-width: 1200px;
+.page-wrapper { width: 100%; min-height: 100vh; }
+.page-container {
+  width: 100%; max-width: $content-width; margin: 0 auto;
+  padding: 0 16px; box-sizing: border-box;
+}
+```
+
+不装 postcss-pxtorem。
+
+### 2.3 移动 H5 + Sass（750 → rem）
+
+**postcss.config.js** — `rootValue: 75`; `selectorBlackList: ['.norem', /^\.van-/]`(Vant 不转换)
+
+**src/utils/flexible.ts** — 根字号 `75 * (clientWidth / 750)`;宽屏策略:**内容区 max-width 750px 水平居中**,避免 iPad 上 UI 过大:
+
+```ts
+const BASE = 75
+function setRootFontSize() {
+  const cw = document.documentElement.clientWidth
+  const vw = Math.min(cw, 750)
+  document.documentElement.style.fontSize = `${(vw / 750) * BASE}px`
+}
+```
+
+`main.ts` 最顶部 `import '@/utils/flexible'`。
+
+**index.html** 加:
+
+```html
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+```
+
+`variables.scss` 注释:设计稿多少 px 写多少 px。
+
+**layout.scss 追加** — 宽屏内容区封顶居中(与 flexible 配合):
+
+```scss
+.mobile-wrapper {
+  width: 100%;
+  min-height: 100vh;
+  margin: 0 auto;
+}
+.mobile-container {
+  width: 100%;
+  max-width: 750px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+```
+
+DefaultLayout 移动 H5:`.mobile-wrapper` > Header + `<main class="mobile-container">` + TabBar。
+
+### 2.4 移动 H5 + Tailwind / UnoCSS
+
+- **不装** postcss-pxtorem(UnoCSS 同 Tailwind 处理)
+- Tailwind:`tailwind.config` → `screens: { sm: '750px' }`;spacing/fontSize 按 750 稿扩展
+- UnoCSS:`uno.config.ts` → `theme` 里按 750 定义 spacing/fontSize,或直接用 rem 值
+- 同样加 `.mobile-container { max-width:750px }` 居中
+- `DESIGN.unit = 'tailwind-rem'`(UnoCSS 也用此值)
+
+### 2.5 小程序（750 / rpx）
+
+- 样式全用 `rpx`(设计稿 32px → `32rpx`)
+- **禁止** postcss-pxtorem
+- TabBar / 导航 → `pages.json`(uni-app) 或 `app.json`(原生)
+
+---
+
+## 步骤 3：环境变量、类型、拦截器、Proxy
+
+### 3.1 目录
 
 ```
 src/
-  config/
-    env.ts              # 域名常量,页面/组件可直接 import
-  api/
-    request.ts          # 拦截器工厂 + 各域名实例
-    modules/            # 各模块接口(后续业务往这里塞)
-.env.development        # 开发环境变量
-.env.production         # 生产环境变量
-.env.example            # 模板(不含真实密钥,提交 git)
+  config/env.ts
+  config/design.ts
+  types/api.d.ts
+  utils/message.ts
+  api/request.ts
+  api/modules/example.ts
+.env.development
+.env.production
+.env.example
 ```
 
-#### 2.2 环境变量命名规则
+### 3.2 环境变量
 
-按问题 5 收集的域名 key 生成变量,**统一大写 + `API_` 前缀**:
+key → `VITE_API_<KEY>` / `NUXT_PUBLIC_API_<KEY>` / `NEXT_PUBLIC_API_<KEY>`
 
-| 域名 key | Vite 变量 | Nuxt 变量 | Next 变量 |
-|----------|-----------|-----------|-----------|
-| `main` | `VITE_API_MAIN` | `NUXT_PUBLIC_API_MAIN` | `NEXT_PUBLIC_API_MAIN` |
-| `user` | `VITE_API_USER` | `NUXT_PUBLIC_API_USER` | `NEXT_PUBLIC_API_USER` |
-| `upload` | `VITE_API_UPLOAD` | `NUXT_PUBLIC_API_UPLOAD` | `NEXT_PUBLIC_API_UPLOAD` |
+| 文件 | 读取时机 | 内容 |
+|------|---------|------|
+| `.env.development` | `npm run dev` / `build:dev` | 占位 dev 域名 |
+| `.env.production` | `npm run dev:prod` / `npm run build` | 占位 prod 域名 |
+| `.env.local` | 所有 mode,优先级最高 | 真实域名/密钥(不提交) |
 
-`.env.development` 示例（假设有 main / user 两个域名）:
+`.env.example` 示例:
 
 ```env
-# 开发环境 — npm run dev / npm run dev:prod 的 --mode development 会读此文件
 VITE_API_MAIN=https://dev-api.example.com
 VITE_API_USER=https://dev-user.example.com
+# 复制为 .env.local 并改成真实地址
 ```
 
-`.env.production` 示例:
+### 3.3 npm scripts
 
-```env
-# 生产环境 — npm run build / npm run dev:prod 会读此文件
-VITE_API_MAIN=https://api.example.com
-VITE_API_USER=https://user.example.com
-```
-
-`.env.example` 只列 key 不写真实地址,方便团队 onboarding。
-
-**Nuxt3**：在 `nuxt.config.ts` 的 `runtimeConfig.public` 里映射上述变量,`env.ts` 从 `useRuntimeConfig().public` 读。**Next.js**：客户端从 `process.env.NEXT_PUBLIC_*` 读;服务端组件用 `$fetch` 直连,客户端组件走拦截器——文件里加注释说明。
-
-#### 2.3 npm scripts（dev / prod 命令切换）
-
-在 `package.json` 写入以下 scripts（按框架微调命令,但**语义保持一致**）:
-
-| 命令 | 作用 | 读取的环境文件 |
-|------|------|----------------|
-| `npm run dev` | 本地开发,热更新 | `.env.development` |
-| `npm run dev:prod` | 本地开发,但连**生产域名**（联调 prod 接口时用） | `.env.production` |
-| `npm run build` | 打生产包 | `.env.production` |
-| `npm run build:dev` | 打开发包（少见,CI 测 dev 环境用） | `.env.development` |
-| `npm run preview` | 预览 build 产物 | 跟随 build 时的 mode |
-
-**Vite / Vue3 / React** 的 scripts 模板:
+**Vue3 / React (Vite)**:
 
 ```json
 {
@@ -205,10 +305,13 @@ VITE_API_USER=https://user.example.com
     "dev:prod": "vite --mode production",
     "build": "vite build --mode production",
     "build:dev": "vite build --mode development",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "typecheck": "vue-tsc --noEmit"
   }
 }
 ```
+
+React 项目把 `typecheck` 改为 `"tsc -b"`。
 
 **Nuxt3**:
 
@@ -219,12 +322,13 @@ VITE_API_USER=https://user.example.com
     "dev:prod": "nuxt dev --dotenv .env.production",
     "build": "nuxt build --dotenv .env.production",
     "build:dev": "nuxt build --dotenv .env.development",
-    "preview": "nuxt preview"
+    "preview": "nuxt preview",
+    "typecheck": "nuxt typecheck"
   }
 }
 ```
 
-**Next.js**（Next 默认按 `NODE_ENV` 读 `.env.development` / `.env.production`;`dev:prod` 用 `dotenv-cli` 或 `env-cmd` 加载 prod env）:
+**Next.js**:
 
 ```json
 {
@@ -232,284 +336,270 @@ VITE_API_USER=https://user.example.com
     "dev": "next dev",
     "dev:prod": "env-cmd -f .env.production next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "typecheck": "tsc --noEmit"
   }
 }
 ```
 
-若 Next 项目用了 `env-cmd`,顺手装上 `env-cmd` 依赖并在报告里说明。
+Next 需装 `env-cmd`(devDependency)。
 
-#### 2.4 域名常量 `src/config/env.ts`（页面可直接用）
-
-**必须生成**,让页面/组件能 `import { API_BASE, APP_ENV } from '@/config/env'` 拿到当前环境的域名,不必自己拼 `import.meta.env`。
-
-Vite 项目模板:
+### 3.4 `src/types/api.d.ts`
 
 ```ts
-/** 当前运行模式: development | production */
-export const APP_ENV = import.meta.env.MODE
+/** 业务响应壳 — 按后端实际结构调整 */
+export interface ApiResponse<T = unknown> {
+  code: number
+  data: T
+  msg: string
+}
 
-/** 是否开发环境(连 dev 域名) */
-export const IS_DEV = import.meta.env.DEV
+export interface PageResult<T> {
+  list: T[]
+  total: number
+}
+```
 
-/** 各接口域名 — key 与 .env 中 VITE_API_* 对应 */
-export const API_BASE = {
-  main: import.meta.env.VITE_API_MAIN as string,
-  user: import.meta.env.VITE_API_USER as string,
-  // ...按问答收集的域名 key 展开
-} as const
+### 3.5 `src/config/env.ts`
 
-export type ApiBaseKey = keyof typeof API_BASE
+导出 `APP_ENV`、`IS_DEV`、`API_BASE`、`getApiBase(key)`;dev 模式 `console.info('[env]', APP_ENV, API_BASE)`。
 
-/** 取单个域名,页面拼静态资源/CDN 链接时用 */
-export function getApiBase(key: ApiBaseKey): string {
-  const url = API_BASE[key]
-  if (!url) {
-    throw new Error(`[env] 缺少 API 域名: ${key},请检查 .env 是否配置了 VITE_API_${key.toUpperCase()}`)
+Nuxt → `runtimeConfig.public` + composable;uni-app → 按 NODE_ENV 选 dev/prod 域名。
+
+### 3.6 `src/utils/message.ts`
+
+按 UI 库封装,供拦截器调用:
+
+```ts
+// Vue + Element Plus → ElMessage
+// 移动 Vant → showToast
+// 无 UI 库 → console.warn
+export function showError(msg: string) { /* ... */ }
+export function showSuccess(msg: string) { /* ... */ }
+```
+
+### 3.7 `src/api/request.ts`
+
+- 工厂 `createRequest(baseKey)` → `mainRequest` / `userRequest` / …
+- 请求拦截:token、Content-Type、timeout 15000、AbortController
+- 响应拦截:解 `ApiResponse<T>`;`code !== 0` → `showError` + reject;401 → 清登录态 + 跳登录;5xx/网络 → `showError`
+- `cancelAllRequests()` 供路由切换调用
+
+### 3.8 Dev Proxy / CORS（按框架,仅 H5 本地开发）
+
+**Vue3 / React (Vite)** — `vite.config.ts`:
+
+```ts
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '')
+  return {
+    server: {
+      proxy: {
+        '/api-main': {
+          target: env.VITE_API_MAIN,
+          changeOrigin: true,
+          rewrite: (p) => p.replace(/^\/api-main/, ''),
+        },
+        // 每个 API key 一条: /api-user → VITE_API_USER
+      },
+    },
   }
-  return url
-}
+})
 ```
 
-启动时在 `main.ts` / `app.vue` 加一行 `console.info('[env]', APP_ENV, API_BASE)`（仅 dev 模式）,方便确认当前连的是哪套域名。
-
-#### 2.5 拦截器 `src/api/request.ts`
-
-**不要**只做一个全局 axios 实例绑死一个 baseURL。用**工厂函数 + 多实例**:
+**Nuxt3** — `nuxt.config.ts`:
 
 ```ts
-import axios, { type AxiosInstance } from 'axios'
-import { API_BASE, type ApiBaseKey, getApiBase } from '@/config/env'
-
-function createRequest(baseKey: ApiBaseKey): AxiosInstance {
-  const instance = axios.create({
-    baseURL: getApiBase(baseKey),
-    timeout: 15000,
-  })
-  // 请求拦截: token、Content-Type
-  // 响应拦截: 业务壳、401、5xx、网络错误
-  return instance
-}
-
-/** 各域名对应的请求实例 — 业务模块 import 对应实例即可 */
-export const mainRequest = createRequest('main')
-export const userRequest = createRequest('user')
-// export const uploadRequest = createRequest('upload')
-
-/** 路由切换时取消所有未完成请求 */
-const pendingControllers = new Set<AbortController>()
-export function cancelAllRequests() { /* AbortController 实现 */ }
-
-/** 也可按 key 动态取实例 */
-export function getRequest(baseKey: ApiBaseKey) {
-  const map = { main: mainRequest, user: userRequest } as const
-  return map[baseKey]
-}
+export default defineNuxtConfig({
+  runtimeConfig: { public: { apiMain: process.env.NUXT_PUBLIC_API_MAIN } },
+  nitro: {
+    devProxy: {
+      '/api-main': { target: process.env.NUXT_PUBLIC_API_MAIN, changeOrigin: true },
+    },
+  },
+})
 ```
 
-每个实例共享同一套拦截器逻辑（token、错误处理）,仅 `baseURL` 不同。
+**Next.js** — `next.config.ts` 的 `rewrites`(或 dev 时用 env-cmd 直连,proxy 可选)。
 
-**必须包含**:
+**uni-app / 原生微信小程序** — **不配 dev proxy**。`request` 直连 `getApiBase(key)`;本地调试:
+- 微信开发者工具 → 详情 → 不校验合法域名
+- 报告里提醒:上线前在小程序后台配置 request 合法域名
 
-1. **baseURL 从 `getApiBase(key)` 读**,不硬编码域名
-2. **请求拦截器**: 自动加 token、Content-Type、timeout 15000
-3. **响应拦截器**:
-   - 拆业务壳（`{ code, data, msg }`）—— 注释标明「按后端实际结构调」
-   - `code !== 0` → 抛业务错误 + toast
-   - HTTP 401 → 清登录态 + 跳登录
-   - HTTP 5xx → 「服务异常」; 网络错误 → 「网络异常」
-4. **请求取消**: `AbortController` + `cancelAll()`
-
-#### 2.6 各框架差异
-
-| 框架 | 拦截器实现 | 备注 |
-|------|-----------|------|
-| Vue3 + Vite | axios + 上节结构 | 装 `axios`,路径别名 `@/` |
-| Nuxt3 | `$fetch` 封装或 axios | `env.ts` 用 composable 包一层 `useApiBase()`,SSR 安全 |
-| React + Vite | 同 Vue | hooks 里 import `API_BASE` |
-| Next.js | axios,客户端组件 | 文件顶加 `'use client'`; RSC 用原生 fetch |
-| uni-app | `uni.request` 封装 | 放 `src/utils/request.ts`; 按 key 选 baseURL; 不能用 axios |
-
-**uni-app** 额外在 `src/config/env.ts` 里:
+**request.ts baseURL 策略(H5)**:
 
 ```ts
-const isDev = process.env.NODE_ENV === 'development'
-export const API_BASE = {
-  main: isDev ? 'https://dev-api.example.com' : 'https://api.example.com',
-  // ...
-}
+baseURL: import.meta.env.DEV ? '/api-main' : getApiBase('main')
+// 每个 key 对应 /api-{key};生产环境走 getApiBase
 ```
 
-uni-app 无 Vite mode 时,dev/prod 靠 HBuilderX / 微信开发者工具的运行模式切换;scripts 里保留 `dev` / `build` 即可。
+报告里说明 proxy 路径与 .env 域名对应关系。
 
-#### 2.7 示例接口
+### 3.9 示例接口 `api/modules/example.ts`
 
-`src/api/modules/example.ts` 写**两个示例**,展示不同域名实例的用法:
-
-```ts
-import { mainRequest, userRequest } from '@/api/request'
-
-/** 主业务域 — 首页列表 */
-export function getHomeList() {
-  return mainRequest.get('/home/list')
-}
-
-/** 用户域 — 用户信息 */
-export function getUserInfo() {
-  return userRequest.get('/user/info')
-}
-```
-
-首页或示例页 import `API_BASE`,在模板里展示当前环境域名（仅 dev 调试用,上线前可删）。
-
-### 步骤 3：公共组件（核心需求 ②）
-
-不论是否有会员管理，都生成这三个：
-
-```
-src/components/
-  layout/
-    AppHeader.vue     # 或 .tsx
-    AppFooter.vue
-  common/
-    AppPopup.vue
-```
-
-**Header**：
-- 左 logo（占位图 / 文字）+ 中导航菜单（用项目路由表数据驱动，不写死） + 右用户区
-- 用户区根据「是否有会员管理」分两种：
-  - 有 → 未登录显示「登录/注册」按钮，已登录显示头像 + 下拉菜单（个人中心、退出）
-  - 无 → 留空或只放搜索/语言切换占位
-- 移动端项目（uni-app / Vant）→ 改成顶部导航栏 + 抽屉菜单结构
-
-**Footer**：
-- 三段式：联系方式 / 友情链接 / 备案信息（占位）
-- 移动端项目（uni-app / Vant）→ **自动**生成 TabBar 替代 Footer,不询问
-
-**Popup**：通用弹窗组件
-- Props：`modelValue` (v-model 控制开关) / `title` / `closable` / `maskClose`
-- Slots：default（内容）、`footer`（底部按钮区）
-- React 版用 `open` + `onClose` 受控
-
-每个组件要：用 `<script setup lang="ts">` (Vue) / `function` 组件 (React)，Props 带类型，emits 完整，**不要写空骨架糊弄**——至少结构、样式、基础交互都要可用。
-
-### 步骤 4：会员状态管理（仅当问题 6 选「是」）
-
-#### Vue / Nuxt → Pinia
-
-```
-src/stores/
-  user.ts
-```
-
-`user.ts` 必须包含：
-
-- `state`: `token`、`userInfo`（id、name、avatar 等）、`isLogin`（computed）
-- `actions`:
-  - `login(payload)` → 调登录接口 → 存 token + userInfo → 持久化（localStorage / Nuxt useCookie）
-  - `logout()` → 清状态 + 跳登录
-  - `fetchUserInfo()` → 拉用户详情
-- **持久化**：用 `pinia-plugin-persistedstate`（Vue）或 `useCookie`（Nuxt SSR 友好），自动装上
-- **拦截器联动**：在 `request.ts` 工厂函数的请求拦截里取 token,**所有域名实例**自动带上
-
-登录接口走 `userRequest`,注册/用户信息等同域接口也走对应实例。
-
-#### React / Next → Zustand
-
-```
-src/stores/
-  user.ts
-```
-
-用 Zustand + persist middleware，结构同上。注意 Next 服务端组件不能用 client store，要在文件顶部加 `'use client'`。
-
-#### uni-app → Pinia 或 vuex
-
-uni-app 通常用 Pinia，结构同 Vue 版，持久化改用 `uni.setStorageSync`。
-
-**登录页骨架**：顺手生成 `src/pages/login/index.vue` (或 `app/login/page.tsx`)，包含手机号 + 密码两个输入 + 提交按钮 + 调 store.login。**别只生成 store 不生成页面**——用户拿到要立刻能跑通登录流程。
-
-### 步骤 5：路由与基础页面
-
-- Vue3 → 在 `router/index.ts` 加 `/`、`/login`（如果有会员）、`/404` 三条
-- Next.js → 在 `app/` 下建 `page.tsx`、`login/page.tsx`、`not-found.tsx`
-- 加路由守卫：有会员管理时，默认所有页面要登录（除 `/login`、`/register`）；没会员管理则不加守卫
-- 路由 `beforeEach` 里调用 `cancelAllRequests()`（如果有）
-
-### 步骤 6：自行跑验证（Agent 在终端执行,不要甩给用户）
-
-**必须自己在终端跑**,全部通过后再出最终报告:
-
-```
-1. cd <project> && npm install
-2. npm run dev — 确认进程能起来、无编译错误(看终端输出,不必真开浏览器)
-3. npm run build — 确认生产构建通过
-4. (可选) npm run dev:prod — 确认 prod mode 能启动
-```
-
-验证点:
-- 终端无 TS/编译报错
-- `console.info('[env]', …)` 或 build 日志里 env 变量已注入
-- 缺 env 会在 build 阶段暴露,当场修 `.env` / `env.ts` 再重跑
-
-**起不来** → 自行修到能 build 为止;实在阻塞(如无 node/npm)才在报告里说明,不要谎报「项目已就绪」。
+跨域名示例 + 返回类型 `Promise<ApiResponse<UserInfo>>`。
 
 ---
 
-## 完成后的报告
+## 步骤 4：Layout 与公共组件
+
+### 4.1 目录
 
 ```
-✅ 项目 {名称} 已初始化完成
-
-📦 技术栈
-  框架: {Vue3 / Nuxt3 / React / Next / uni-app}
-  语言: {TS / JS}
-  样式: {Sass / Tailwind / ...}
-  UI 库: {Element Plus / Ant Design / 无}
-  状态管理: {Pinia / Zustand / 无}
-
-🌐 接口域名
-  main  → dev: {dev-main}  /  prod: {prod-main}
-  user  → dev: {dev-user}  /  prod: {prod-user}
-  (按实际收集的 key 列出)
-
-📁 关键文件
-  src/config/env.ts           — 域名常量,页面直接 import { API_BASE }
-  src/api/request.ts          — 多实例拦截器(mainRequest / userRequest / ...)
-  src/api/modules/example.ts  — 跨域名调用示例
-  src/components/layout/      — Header / Footer
-  src/components/common/AppPopup.vue — 通用弹窗
-  src/stores/user.ts          — 登录态(如果选了会员管理)
-  .env.development / .env.production / .env.example
-
-🚀 启动
-  cd {项目目录}
-  npm run dev       → 本地开发,连 dev 域名
-  npm run dev:prod  → 本地开发,连 prod 域名(联调用)
-  npm run build     → 打生产包
-
-⚠️ 还要你做的
-  1. 改 .env.development / .env.production 里的域名为实际地址
-  2. 拦截器里的业务壳判断({ code, data, msg })按后端实际结构调
-  3. 新增业务域时在 .env、env.ts、request.ts 三处同步加 key
-  4. Header/Footer 里的 logo、导航、备案信息替换占位内容
-
-📋 自动采用的默认值(若你未指定)
-  {列出用了哪些默认: UI 库 / 样式 / 域名占位 / 目录 等}
+src/
+  layouts/
+    DefaultLayout.vue    # 或 DefaultLayout.tsx / Nuxt layouts/default.vue
+  components/
+    layout/AppHeader.vue
+    layout/AppFooter.vue   # PC only
+    common/AppPopup.vue
 ```
 
-**只在全部步骤跑完后输出这一份报告**。让用户清楚：**做了什么、什么需要他后续动手补、哪些项用了默认**。
+### 4.2 `DefaultLayout`
+
+- PC:`.page-wrapper` > Header + `<main class="page-container"><slot/></main>` + Footer
+- 移动 H5:`.mobile-wrapper` > Header + `<main class="mobile-container"><slot/></main>` + TabBar(无 Footer)
+- 小程序:多数页面用原生导航;自定义页包一层 rpx 容器
+
+### 4.3 Header / Footer / Popup
+
+| 端 | Header | Footer |
+|----|--------|--------|
+| PC | 1200 居中,logo+路由导航+用户区 | 1200 三段式占位 |
+| 移动 H5 | 顶栏 px→rem / Tailwind class | TabBar,无 Footer |
+| 小程序 | 原生或 rpx 自定义顶栏 | TabBar in pages.json |
+
+Popup:`v-model` / `title` / slots;尺寸跟端走。
+
+会员=是:Header 右侧登录/注册或头像下拉。
+
+---
+
+## 步骤 5：会员管理（仅问题 7 = 是）
+
+```
+src/stores/user.ts
+```
+
+state:`token`、`userInfo`、`isLogin`;actions:`login` / `logout` / `fetchUserInfo`;持久化 localStorage / useCookie(Nuxt) / uni.setStorageSync。
+
+登录页 + 拦截器所有实例自动带 token。登录接口走 `userRequest`。
+
+---
+
+## 步骤 6：路由与基础页面
+
+### Vue3 + Vite
+
+`router/index.ts`:`/`、`/login`(会员)、`/404`;`beforeEach` 鉴权 + `cancelAllRequests()`;页面用 DefaultLayout。
+
+### Nuxt3
+
+`pages/index.vue`、`pages/login.vue`(会员)、`error.vue`;会员 → `middleware/auth.ts` + `definePageMeta`;`nuxt.config` css 引入 layout.scss。
+
+### uni-app
+
+`pages.json`:pages + tabBar(移动/小程序);`pages/index/index.vue` 等;登录页路径与 tabBar 互斥。
+
+### 原生微信小程序
+
+```
+miniprogram/
+  app.js / app.json / app.wxss
+  sitemap.json
+  project.config.json
+  utils/request.js          # uni.request 同款封装,按 key 选 baseURL
+  config/env.js             # dev/prod 域名(或读 ext 配置)
+  pages/index/index.{wxml,wxss,js,json}
+  pages/login/...(会员时)
+```
+
+`app.json`:pages + tabBar;`utils/request.js` 封装 token / 业务壳 / 401;本地调试勾选「不校验合法域名」。
+
+### React + Vite
+
+`react-router-dom`;布局路由嵌套 DefaultLayout。
+
+### Next.js App Router
+
+`app/layout.tsx` 包 DefaultLayout;`app/page.tsx`、`app/login/page.tsx`、`app/not-found.tsx`;客户端组件加 `'use client'`。
+
+首页 dev 模式可展示 `API_BASE` + `DESIGN`,**必须用** `if (import.meta.env.DEV)` 包裹,避免生产环境泄露。
+
+---
+
+## 步骤 7：项目 README.md
+
+生成 **20~40 行**项目内 README(不是 skill 文档):
+
+```markdown
+# {项目名}
+## 启动
+npm run dev / dev:prod / build
+## 设计稿
+PC 1920 主体 1200 | 移动 750 px→rem | 小程序 rpx
+## 接口域名
+main / user → 见 .env.example;真实地址复制到 .env.local
+## 新增域名
+.env.example + .env.local + env.ts + request.ts + dev proxy(H5) 同步
+## 小程序调试
+开发者工具勾选不校验合法域名;上线配置 request 合法域名
+## 后续
+业务组件用 vue-component-gen,会读 config/design.ts 与 config/env.ts
+```
+
+---
+
+## 步骤 8：验证（Agent 终端执行）
+
+```bash
+cd <project>
+npm install
+npm run dev        # 确认无编译错误
+npm run build      # 确认生产构建
+npm run typecheck  # 或 nuxi typecheck / tsc -b,按框架
+```
+
+**抽查**:
+
+| 端 | 检查 |
+|----|------|
+| PC | layout 含 max-width:1200px |
+| 移动 Sass | dist CSS 含 rem;`.mobile-container` max-width 750px |
+| 移动 Tailwind/UnoCSS | 无 postcss-pxtorem;有 mobile-container |
+| 小程序 | 样式含 rpx;pages.json tabBar 路径存在;无 proxy 配置 |
+| H5 通用 | env 注入;Vite/Nuxt proxy 与 .env 域名一致 |
+| UI 库 | 首页或 Header 有库组件且 build 通过 |
+
+失败 → 自行修到 build + typecheck 通过。
+
+---
+
+## 完成报告（只输出一次）
+
+```
+✅ 项目 {名称} 已初始化
+
+📦 技术栈 + 端 + 设计稿约定
+🌐 域名列表(dev/prod)
+📁 关键文件清单
+🚀 启动命令
+⚠️ 待你替换:域名 / 业务壳 / logo导航 / 备案
+📋 采用的默认值
+🔗 后续组件 → /vue-component-gen
+```
 
 ---
 
 ## 铁律
 
-1. **只问 7 个问题,答完一口气跑到底**——中间任何确认、进度汇报、分步交付 = 违规。最终只输出一次完成报告。
-2. **缺信息用默认值,不回头问**——见「默认值」表;报告里注明「未指定,已用默认 xxx」即可。
-3. **优先用官方脚手架**——`npm create vue` / `npx create-next-app`，不要纯手写所有文件。
-4. **多域名三件套必须齐**——`.env` 变量 + `config/env.ts` 常量 + `request.ts` 多实例,缺任何一个不算完成。
-5. **dev/prod 命令必须可跑**——Agent 自己跑 `npm run dev` + `npm run build` 验证通过再交付。
-6. **拦截器是骨架不是成品**：业务壳（`code/data/msg`）的判断逻辑用注释标明「按后端实际结构调」，不假设。
-7. **公共组件要可用**：Header/Footer/Popup 不要交付"空 div"，至少结构 + 样式 + 基础交互完整。
-8. **会员管理选了「无」就别多事**：不要"为了将来扩展方便"硬塞 Pinia——YAGNI。
-9. **不引超出问答范围的依赖**：用户没说要 i18n 就不装；没说要图表就不装。
+1. **8 问收齐 → 一口气跑完清单 13 项**,中间不确认、不分步汇报。
+2. **冲突以「端」为准**,按决策表自动修正框架/UI/单位。
+3. **会员=否 不加 Pinia/Zustand**,脚手架不加 --pinia。
+4. **Tailwind/UnoCSS 移动禁止 pxtorem**;Sass 移动必须 flexible+pxtorem(75)+mobile-container。
+5. **多域名四件套(H5)**:`.env*` + `env.ts` + `request` 多实例 + dev proxy;**小程序**无 proxy,直连 + 合法域名说明。
+6. **UI 库装必注册**,首页能渲染一个库组件。
+7. **拦截器/ApiResponse 是骨架**,业务壳注释标明待调。
+8. **DefaultLayout + 路由按框架落地**,不能只有孤立 Header 组件。
+9. **YAGNI** — 没要的 i18n/图表/CI 不加。
+10. **交付前 dev + build + typecheck 必须通过**。
