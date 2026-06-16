@@ -6,7 +6,7 @@
 
 | Skill | 作用 |
 |-------|------|
-| [`fe-project-init`](./fe-project-init) | 从零创建前端项目骨架,问答式选技术栈,自动生成接口拦截器(双域名)、Header/Footer/Popup 公共组件,可选会员状态管理 |
+| [`fe-project-init`](./fe-project-init) | 从零创建前端项目骨架,问答式选技术栈,自动生成多域名接口拦截器(dev/prod 环境变量 + npm 命令切换)、Header/Footer/Popup 公共组件,可选会员状态管理 |
 | [`vue-component-gen`](./vue-component-gen) | 快速生成 Vue3 + TS + Nuxt 组件/页面骨架,自动匹配项目目录约定、UI 库、状态库、请求封装 |
 | [`vue-fe-review`](./vue-fe-review) | Review Vue3 + TS + Nuxt 代码,专抓响应式陷阱、SSR 反模式、性能/内存问题 |
 
