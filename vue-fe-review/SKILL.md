@@ -1,167 +1,183 @@
 ---
 name: vue-fe-review
 description: >-
-  Review Vue3 + TS + Nuxt 代码,专抓响应式陷阱、SSR 反模式、性能/内存问题。
+  Review Vue3 + TS + Nuxt 代码,专抓响应式陷阱、SSR 反模式、性能/内存、页面加载速度问题。
   Use when the user says "review 一下", "看看这段代码", "帮我审一下", "前端 review",
   "这代码有啥问题", or /vue-fe-review.
+  一轮输出完整结论;提完建议后自省一次,仅优化空间大时补充,否则收口。只报告不擅自改代码。
 ---
 
 # vue-fe-review: Vue3 + Nuxt 代码 review
 
-职责：对当前 diff 或指定文件做一轮**前端专项 review**，重点抓 Vue3 响应式、Nuxt SSR、TypeScript、性能/内存问题。**不做通用代码风格挑刺**（缩进、变量名、空行那些交给 lint）。
+对用户指定范围(文件 / 文件夹 / git diff / PR)做**一轮**前端专项 review,**只报告不擅自改代码**。
+不做通用风格挑刺(缩进、命名、空行交给 lint)。
 
----
+## 核心纪律
 
-## 启动：明确 review 范围
+1. **只读不改** — 默认仅输出报告;用户说「按 review 改」「帮我修」后才编辑文件。改完后**不再**主动自省或提议二轮 review。
+2. **一轮 + 自省一次** — 扫描 → 首轮报告 → 内部自省一次 → 收口。禁止第三轮思考。
+3. **自省判定** — 假设用户已采纳全部首轮建议,**仍有 🔴 或明显 🟡** 遗漏 / 连锁问题 → 同份报告追加「补充建议」;只剩锦上添花、风格、主观审美 → 直接收口,不写补充。
+4. **无 🔴🟡 = 可合入** — 不凑 🟢、不编造优化点、不翻旧代码的账(除非本次 diff 连锁出 bug)。🟢 仅在用户明确「深度 review」时输出。
 
-1. **没指定范围** → 默认 review 当前 git diff（未提交 + 已暂存）。先 `git diff` 和 `git diff --cached` 看一遍。
-2. **指定文件** → 只读那些文件。
-3. **指定 PR/commit** → `git show <ref>` 或 `git diff <base>..<head>`。
+## 启动:确定范围
 
-读完后**先告诉用户范围**："本次 review 覆盖 N 个文件，约 M 行变更，主要涉及 xxx"。
+用户已指定范围(文件 / 文件夹 / diff / PR) → 直接执行,不再问。
+未指定 → `AskUserQuestion` 问一次:
 
----
+| 选项 | 含义 |
+|------|------|
+| 当前 git diff | `git diff` + `git diff --cached` |
+| 指定文件 | 1 个或多个文件路径(追问) |
+| 指定文件夹 | 递归扫 `.vue` / `.ts` / `.tsx` / `.js`,跳过 `node_modules` / `dist` / `.nuxt` |
+| 指定 PR/commit | `git show <ref>` 或 `git diff <base>..<head>` |
 
-## Review 维度（按这个顺序检查，不要跳）
+- diff 为空 → 告知,请改选文件 / 文件夹。
+- 文件夹下源文件 >30 → 先列清单确认是否全扫。
 
-### 1. 响应式陷阱（Vue3 最容易踩的坑）
+读完后一句话说明范围(模式 + 路径 + 文件数),立即进入检查。
 
-逐个 `.vue` / `.ts` 文件扫：
+## 检查维度(按序,只扫 diff 行)
 
-- **解构 props 丢失响应式**：
-  ```ts
-  // ❌ 错
-  const { count } = defineProps<{ count: number }>()
-  // ✅ 对
-  const props = defineProps<{ count: number }>()
-  // 或用 toRefs
-  ```
-  *例外*：Vue 3.5+ 的 reactive props destructure（`vue@>=3.5` + 编译器开启）允许直接解构，要先看 `package.json` 的 vue 版本。
+### 1. 响应式陷阱
+- props 解构丢响应式(Vue <3.5 或编译器未开 reactive props destructure)
+- `reactive` 对象解构 / 整体替换 → 失去响应式
+- ref 嵌在普通对象里未 unwrap
+- `watch` source 写错(漏 `() =>`;监听 reactive 漏 `deep`)
+- computed 含副作用(请求 / 赋值 / log)
+- 会增删 / 重排的 `v-for` 用 `index` 当 key
 
-- **`reactive` 对象解构/赋值丢响应式**：
-  ```ts
-  const state = reactive({ count: 0 })
-  const { count } = state  // ❌ count 不再响应
-  state = { count: 1 }      // ❌ 整体替换不会触发更新
-  ```
-
-- **ref 在模板里多写 `.value`**：模板里 ref 自动 unwrap，但放在对象里就不会（`{{ obj.myRef.value }}` vs `{{ obj.myRef }}`）。
-
-- **watch 监听 reactive 对象用错 source**：
-  ```ts
-  // ❌ 监听整个对象需要 deep,但写法常被遗漏
-  watch(state, ...)  // 不会触发(reactive 对象本身引用不变)
-  // ✅
-  watch(() => state.x, ...)
-  watch(state, ..., { deep: true })
-  ```
-
-- **computed 里有副作用**：computed 必须纯函数，不要在里面 `console.log` / 改其他 ref / 发请求。
-
-- **v-for 里用 `index` 当 key**：列表会增删/重排时会导致状态错位；只有静态、无状态、永不重排的列表才允许。
-
-### 2. Nuxt SSR 反模式（线上才暴露的坑）
-
-- **直接访问 `window` / `document` / `localStorage`**：会 SSR 报错。要用 `if (process.client)` / `if (import.meta.client)` 包裹，或放 `onMounted` 里。
-- **顶层异步**：`<script setup>` 顶层 `await fetch(...)` 会让组件成 async 组件，没用 `<Suspense>` 会有 hydration 警告。Nuxt 数据获取应该用 `useFetch` / `useAsyncData` / `$fetch`。
-- **`useState` vs `ref`** 混用：跨组件共享状态在 SSR 必须用 `useState`，否则服务端和客户端拿到不同实例。
-- **`useFetch` 在 onMounted 里调用**：失去 SSR 能力，应该顶层调用。
-- **`watch` 在 SSR 里跑副作用**：服务端 watch 不应该有副作用（如发请求）。用 `onMounted` 包裹或 `process.client` 守卫。
-- **环境变量泄漏**：`useRuntimeConfig().xxx`（无 public 前缀）泄漏到客户端会被打包进 bundle。检查 `nuxt.config.ts` 的 `runtimeConfig` 划分。
+### 2. Nuxt SSR 反模式
+- 顶层访问 `window` / `document` / `localStorage`(应 `import.meta.client` 守卫或挪 `onMounted`)
+- `<script setup>` 顶层裸 `await fetch`(应 `useFetch` / `useAsyncData`)
+- 跨组件共享态用普通 `ref` 而非 `useState`
+- `useFetch` 放 `onMounted` 里(失去 SSR)
+- SSR 路径下 `watch` 跑副作用
+- `runtimeConfig` 私密字段无 `public.` 前缀 → 泄漏客户端 bundle
 
 ### 3. TypeScript 严重问题
-
-- **`any` 滥用**：找出所有 `: any` 和 `as any`，每个都要有理由（第三方库无类型 / 临时绕过）。
-- **断言滥用**：`as Foo` 比类型守卫弱，能换守卫就换。
-- **`!` 非空断言**：每个 `obj!.x` 都要确认确实非空，否则换成 `?.` 或 if 守卫。
-- **接口和后端字段对不上**：如果改的是接口对接代码，比对接口定义和实际字段（前端定义 `userId: string` 但后端返回 `user_id` 这种）。
+- 无理由的 `any` / `as any`
+- 可换类型守卫的 `as Foo`、危险 `!` 非空断言
+- 前端字段名与后端响应不一致(`userId` vs `user_id`)
 
 ### 4. 性能 / 内存
+- `addEventListener` / `setInterval` / `setTimeout` 未在 `onBeforeUnmount` 清理
+- 大列表(>500 项且已卡)无虚拟滚动
+- computed 内 O(n²) 重计算
+- 大对象 / 不需响应的数据用深 `ref`(应 `shallowRef` / `markRaw`)
 
-- **未清理的事件监听 / 定时器**：`addEventListener` / `setInterval` / `setTimeout` 在 `onMounted` 里加了，没在 `onBeforeUnmount` / `onUnmounted` 里清。Nuxt 服务端组件尤其要小心。
-- **大列表无虚拟滚动**：`v-for` 渲染 1000+ 项 → 建议虚拟滚动（vue-virtual-scroller / el-virtualized-list）。
-- **computed 里跑重计算**：每次依赖变都跑一次 O(n²) 的算法 → 建议加缓存或拆 watch。
-- **图片无 lazy / 无尺寸**：`<img>` 不加 `loading="lazy"`、不指定宽高 → 影响 LCP 和 CLS。
-- **未必要的深响应式**：大对象/不需要响应的数据用 `shallowRef` / `markRaw`，不用普通 `ref`。
+### 5. 页面加载速度(首屏 / LCP / 包体积)
 
-### 5. 错误处理边界
+无页面 / 路由 / 资源改动则跳过。
 
-- **接口请求无错误处理**：`await $fetch(...)` 没 try/catch，失败会抛到组件外。
-- **`useFetch` / `useAsyncData` 没用 `error`**：模板里只渲染 `data`，不处理 `error.value`。
-- **空态 / loading 态缺失**：列表组件只写 happy path，数据为空时白屏。
+**🔴(明显拖慢首屏)**:
+- 路由 / 页面同步 import 重包(整包 echarts、element-plus、antd、编辑器、地图、moment)— 应动态 `import()` 或按需
+- `app.vue` / `main.ts` / 全局插件同步引入非必要重库,所有页面买单
+- 顶层串行多个 `await useFetch` 形成请求瀑布,无依赖应并行
+- 首屏 `<img>` / 背景图无尺寸 → CLS;首屏大图无 priority / preload
+- 第三方脚本同步阻塞,无 `async` / `defer`
 
-### 6. 可访问性（轻量检查，不展开）
+**🟡(可感知优化)**:
+- 非页面级大组件未 `defineAsyncComponent` / `<LazyXxx>`
+- 非首屏数据未 `lazy: true` 或未挪 `onMounted`(权衡 SEO)
+- 非首屏 `<img>` 缺 `loading="lazy"`;有 `@nuxt/image` 却用裸 `<img>`;大图未压缩 / 未 webp
+- `@font-face` 缺 `font-display: swap`;字重过多;关键字体未 preload
+- `import 'xxx/dist/index.css'` 全量样式未按需
+- icon 全量字体 / 整包 icons 仅用少量
+- `prefetch` 滥用抢首屏带宽
 
-- 交互元素是不是 `<button>` / `<a>`，而不是带 `@click` 的 `<div>`
-- 图片有 `alt`
-- 表单有 `<label>` 关联
+```ts
+// 路由懒加载
+{ path: '/report', component: () => import('@/pages/Report.vue') }
+// 重组件异步
+const Chart = defineAsyncComponent(() => import('@/components/Chart.vue'))
+// 非首屏请求延迟
+const { data } = await useFetch('/api/extra', { lazy: true })
+```
 
-不深扫无障碍——那是 a11y-check 的职责。这里只点最基础的。
+不报「可加 CDN」这种纯理论,必须对应 diff 具体位置。
 
-### 7. fe-project-init 项目约定（若存在 `src/config/design.ts`）
+### 6. 错误处理
+- 请求无 try/catch、`useFetch` 未消费 `error.value`
+- 列表 / 详情无 loading / 空态(用户可见白屏)
 
-- **端与单位**:PC 应用 `.page-container`(1200);移动 H5 Sass 应用 px→rem + `.mobile-container`(750);小程序用 `rpx`,不应混用 rem/pxtorem
-- **布局**:PC 内容是否错误全宽(缺 max-width:1200);移动是否缺 750 封顶居中
-- **env**:页面是否直接拼 `import.meta.env.VITE_API_*`,应走 `config/env.ts` 的 `getApiBase`
-- **请求**:是否绕过 `api/request.ts` 裸 axios/fetch(除 Next RSC 等合理例外)
+### 7. 可访问性(仅 🔴)
+- `<div @click>` 假按钮(无 role / 键盘可达)
+- 关键图无 `alt`、表单无 `label`
 
-### 8. 设计纪律（仅 UI 改动触发,落地用户级 `~/.claude/CLAUDE.md`）
+不深扫 a11y。
 
-**触发条件**:本次 diff 含 `.vue` template 改动 / `tailwind.config*` / 全局样式文件(main.scss / app.css / uni.scss) / 字体相关。**纯逻辑 diff 跳过本节,不噪**。
+### 8. fe-project-init 约定(存在 `src/config/design.ts` 时)
+- 端 / 单位混用:PC 缺 1200 容器、移动缺 rem + 750 封顶、小程序误用 pxtorem
+- 绕过 `config/env.ts` 直接拼 `import.meta.env.VITE_API_*`
+- 绕过 `api/request.ts` 裸 axios / fetch
 
-逐个扫:
+### 9. 设计纪律(仅 UI diff)
 
-- **紫色禁用**:diff 里出现 `purple-*` / `violet-*` / `indigo-*` Tailwind class、紫色十六进制(`#6B21A8` / `#7C3AED` / `#8B5CF6` 等)、`from-purple` / `to-violet` 渐变 → 提示替换为项目 `brand-*` token
-- **纯白纯灰大色块**:页面级根容器或 hero 区用 `bg-white` / `bg-gray-50` / `bg-gray-100` 全屏铺底,无渐变/边框/阴影/纹理 → 建议加渐变或 token 色
-- **零动效交互组件**:`<button>` / `<a>` / 卡片类元素无 `transition` / `hover:` / `active:` / `:hover` / `:active` 任何反馈 → 建议加 `transition-all duration-200` + hover/active 反馈
-- **默认系统字体**:项目已注入 Google Fonts 但 diff 里出现 `font-family: sans-serif` / `font-family: -apple-system` 直接覆写,或新增标题元素未用 `font-display` → 建议用项目注册的字族 token
-- **硬编码颜色字号**:`color: #xxx` / `font-size: 14px` 这种裸值(项目有 token 体系时) → 建议走 token
-- **响应式断点缺失**:diff 里新增的页面/组件无任何 `md:` / `lg:` / `@media` 断点,且组件视觉跨度大 → 提示补 375 / 768 / 1280 三档验证
+触发:`.vue` template / `tailwind.config*` / 全局样式(main.scss / app.css / uni.scss) / 字体相关。**纯逻辑 diff 跳过**。
 
-**报告归类**:
-- 紫色禁用、字体偏离、零动效 → 🟡 建议改
-- 纯白大色块、断点缺失 → 🟡 建议改(若已上线则升 🔴)
-- 硬编码颜色字号 → 🟢 可选改进(token 化重构)
+- **紫色禁用** 🟡 — `purple-*` / `violet-*` / `indigo-*` Tailwind class、紫色 hex(`#6B21A8` `#7C3AED` `#8B5CF6` `#A78BFA` 等)、`from-purple` / `to-violet` 渐变 → 替换为项目 `brand-*` token
+- **大色块纯白纯灰** 🟡(已上线 → 🔴)— 页面根容器 / hero 全屏 `bg-white` / `bg-gray-50` / `bg-gray-100`,无渐变 / 纹理 / 边框
+- **零动效交互** 🟡 — `<button>` / `<a>` / 卡片无任何 `transition` / `hover:` / `active:` 反馈 → 加 `transition-all duration-200` + hover / active
+- **覆盖项目字体** 🟡 — 已注入 Google Fonts 但 diff 出现 `font-family: sans-serif` / `-apple-system` 直接覆写
+- **响应式断点缺失** 🟡(已上线 → 🔴)— 新增大跨度组件 / 页面无任何 `md:` / `lg:` / `@media` → 提示补 375 / 768 / 1280 三档
+- **硬编码颜色字号** — 项目有 token 体系时 `color: #xxx` / `font-size: 14px` 裸值 → 仅在用户要求深度 review 时报为 🟢
 
----
+不报主观审美。
 
-## 输出格式（严格遵守）
-
-按"严重程度"分组，**不要按文件分组**——同类问题集中显示便于一次处理：
+## 执行流程
 
 ```
-## 🔴 必改（线上风险 / 数据错乱 / SSR 报错）
+1. 确定范围(询问或直接读 diff)
+2. 按维度扫 → 分级(🔴🟡;🟢 默认忽略)
+3. 输出首轮报告(每条:文件:行 — 问题 — 原因 — 建议改法+代码片段)
+4. 内部自省一次(不输出推理):假设全采纳,是否仍有 🔴 或明显 🟡 遗漏 / 连锁问题?
+   ├─ 是 → 同份报告追加「## 补充建议」(只列重大项)→ 收口
+   └─ 否 → 直接收口
+5. 等用户确认
+```
 
-1. components/UserCard.vue:23 — props 解构丢失响应式
-   const { count } = defineProps(...) — count 不会跟随父级更新
-   建议:改成 const props = defineProps(...);用 props.count
+**很大优化空间**(满足任一即补充):未覆盖的 🔴(线上风险 / SSR 报错 / 数据错乱)/ 修 A 会暴露未修的 🔴🟡 / 同根因还有 2+ 处同类首轮漏报。
 
-2. pages/index.vue:45 — 顶层访问 window 会 SSR 报错
+**禁止**:
+- review 阶段动用户代码
+- 自省超过一轮
+- 仅剩锦上添花仍写「还可继续优化」并凑 🟢
+- 主动提议「要不要再扫一遍」(用户主动要求除外)
+- 翻未改动旧代码的账(除非本次 diff 连锁出 bug)
+
+**用户授权后改代码**:按报告逐项修改 → 一句话说明改了什么 → 结束。**不再二次自省 / 二轮 review**。
+
+## 输出格式
+
+按严重程度分组,**不按文件分组**:
+
+```
+## vue-fe-review 完成(一轮)
+**范围**: N 个文件,约 M 行变更
+
+## 🔴 必改(线上风险 / 数据错乱 / SSR 报错)
+1. `UserCard.vue:23` — props 解构丢失响应式
+   原因: count 不会跟随父级更新
+   建议:
+   const props = defineProps<{ count: number }>()
+   // 用 props.count
+
+## 🟡 建议改(性能 / 维护性 / 加载速度)
+1. `pages/index.vue:8` — 同步 import echarts 增大首屏 bundle → 改 `defineAsyncComponent`
    ...
 
-## 🟡 建议改(性能 / 维护性)
-
-1. components/List.vue:12 — v-for 用 index 当 key
+## 补充建议(仅自省后空间大时输出,否则整节省略)
+1. `index.vue:80` — 修完 props 后父组件传参缺类型守卫
    ...
 
-## 🟢 可选改进(锦上添花)
-
-1. ...
+**结论**: 共 X 必改 / Y 建议改 [+ Z 补充]。确认后我可按项修改。
 ```
 
-每条问题包含：**文件:行号 — 一句话问题描述**，下一行**为什么是问题 / 复现条件**，再下一行**建议怎么改**（给具体代码片段，不要只说"改一下"）。
-
-**不报告未改动的代码里的旧问题**——除非那旧问题导致这次改动有 bug。Review 范围 = 本次 diff，不是整个项目。
-
----
-
-## 完成后的总结
-
-最后一段给用户一个判断：
-
+无 🔴🟡 时:
 ```
-总结:本次 diff 共发现 X 个必改 / Y 个建议改 / Z 个可选。
-建议先处理必改,合入前我可以再扫一遍。
+## vue-fe-review 完成(一轮)
+**范围**: ...
+**结论**: 未发现明显问题,可合入。
 ```
 
-不灌水、不夸奖、不写"代码整体写得很好"这种废话。**有问题就讲问题，没问题就说"没发现明显问题，可以合入"**。
+每条必含 **文件:行 — 问题** → **原因 / 复现** → **建议改法(代码片段)**。不写「改一下」这种空话。
