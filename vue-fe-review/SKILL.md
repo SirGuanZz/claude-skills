@@ -105,6 +105,24 @@ description: >-
 - **env**:页面是否直接拼 `import.meta.env.VITE_API_*`,应走 `config/env.ts` 的 `getApiBase`
 - **请求**:是否绕过 `api/request.ts` 裸 axios/fetch(除 Next RSC 等合理例外)
 
+### 8. 设计纪律（仅 UI 改动触发,落地用户级 `~/.claude/CLAUDE.md`）
+
+**触发条件**:本次 diff 含 `.vue` template 改动 / `tailwind.config*` / 全局样式文件(main.scss / app.css / uni.scss) / 字体相关。**纯逻辑 diff 跳过本节,不噪**。
+
+逐个扫:
+
+- **紫色禁用**:diff 里出现 `purple-*` / `violet-*` / `indigo-*` Tailwind class、紫色十六进制(`#6B21A8` / `#7C3AED` / `#8B5CF6` 等)、`from-purple` / `to-violet` 渐变 → 提示替换为项目 `brand-*` token
+- **纯白纯灰大色块**:页面级根容器或 hero 区用 `bg-white` / `bg-gray-50` / `bg-gray-100` 全屏铺底,无渐变/边框/阴影/纹理 → 建议加渐变或 token 色
+- **零动效交互组件**:`<button>` / `<a>` / 卡片类元素无 `transition` / `hover:` / `active:` / `:hover` / `:active` 任何反馈 → 建议加 `transition-all duration-200` + hover/active 反馈
+- **默认系统字体**:项目已注入 Google Fonts 但 diff 里出现 `font-family: sans-serif` / `font-family: -apple-system` 直接覆写,或新增标题元素未用 `font-display` → 建议用项目注册的字族 token
+- **硬编码颜色字号**:`color: #xxx` / `font-size: 14px` 这种裸值(项目有 token 体系时) → 建议走 token
+- **响应式断点缺失**:diff 里新增的页面/组件无任何 `md:` / `lg:` / `@media` 断点,且组件视觉跨度大 → 提示补 375 / 768 / 1280 三档验证
+
+**报告归类**:
+- 紫色禁用、字体偏离、零动效 → 🟡 建议改
+- 纯白大色块、断点缺失 → 🟡 建议改(若已上线则升 🔴)
+- 硬编码颜色字号 → 🟢 可选改进(token 化重构)
+
 ---
 
 ## 输出格式（严格遵守）

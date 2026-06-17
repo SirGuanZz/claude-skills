@@ -28,6 +28,13 @@ description: >-
 **登录页**：**默认必有**(不依赖问题 3),含手机号+验证码+本机号码一键登录。  
 **Pinia**：仅问题 3 选「是」时装;登录态 `pinia-plugin-persistedstate` + `uni.setStorageSync`。
 
+**设计纪律(默认按用户级 `~/.claude/CLAUDE.md` 落地)**:小程序受网络字体限制,不引 Google Fonts,改为系统字体堆叠 + token 化样式:
+- **字体**:`uni.scss` 定义 `--font-sans` / `--font-display`,优先 PingFang SC / SF Pro Display,正文与标题用不同字重拉开层次,**禁默认系统字号字重一锅煮**。
+- **配色**:`uni.scss` 定义 `--color-brand` 非紫色阶(占位 `#0EA5E9` 系)+ 中性色阶,禁默认紫蓝渐变。
+- **背景**:页面根容器渐变 + 装饰光斑(用 `view` + `linear-gradient` / `radial-gradient`),禁纯白纯灰大面积铺底。
+- **动效**:按钮 `:active` 微缩放(`transform: scale(0.98)`)+ `transition` 200ms,卡片点击有反馈。
+- **rpx**:全用 rpx,设计稿 750,标题字号 ≥ 36rpx,正文 ≥ 28rpx。
+
 ---
 
 ## 启动：问答收集需求（只此一轮,答完即开工）
@@ -52,13 +59,14 @@ description: >-
 □ 2. vite.config.ts 配 scss modern-compiler,消除 legacy-js-api 警告
 □ 3. .gitignore 含 node_modules / dist / unpackage / .env.local
 □ 4. src/config/design.ts — 750 rpx
-□ 5. src/config/env.ts — API_MAP + IS_TEST + envVersion
-□ 6. src/types/api.d.ts + src/utils/message.ts + src/api/request.ts
-□ 7. src/pages/index + src/pages/login(手机号/验证码/一键登录,不进 tabBar)
-□ 8. src/pages.json pages + tabBar;manifest.json mp-weixin 基本配置
-□ 9. 会员模块 stores/user.ts(若选是)
-□ 10. 项目 README.md(短)
-□ 11. npm run dev:mp-weixin + npm run build:mp-weixin 通过
+□ 5. src/uni.scss 设计 token: --color-brand(非紫) / --font-sans / --font-display / 字号阶 / 间距阶
+□ 6. src/config/env.ts — API_MAP + IS_TEST + envVersion
+□ 7. src/types/api.d.ts + src/utils/message.ts + src/api/request.ts
+□ 8. src/pages/index(渐变 hero + 字层次 + 卡片样板) + src/pages/login(手机号/验证码/一键登录,渐变背景,不进 tabBar)
+□ 9. src/pages.json pages + tabBar;manifest.json mp-weixin 基本配置
+□ 10. 会员模块 stores/user.ts(若选是)
+□ 11. 项目 README.md(含设计纪律 cheatsheet)
+□ 12. npm run dev:mp-weixin + npm run build:mp-weixin 通过
 ```
 
 ---
@@ -153,7 +161,47 @@ export const DESIGN = {
 } as const
 ```
 
-样式全用 `rpx`(设计稿 32px → `32rpx`);禁止 postcss-pxtorem。`uni.scss` 可写全局变量。
+样式全用 `rpx`(设计稿 32px → `32rpx`);禁止 postcss-pxtorem。
+
+### `src/uni.scss`(全局设计 token,默认必写)
+
+落地用户级 `~/.claude/CLAUDE.md` 的设计纪律:
+
+```scss
+/* ===== 颜色:占位 brand 非紫色阶,按品牌替换 ===== */
+$color-brand-50:  #F0F9FF;
+$color-brand-100: #E0F2FE;
+$color-brand-500: #0EA5E9;
+$color-brand-600: #0284C7;
+$color-brand-700: #0369A1;
+$color-text:      #0F172A;
+$color-text-soft: #475569;
+$color-bg:        #F8FAFC;
+
+/* ===== 字号阶(rpx) ===== */
+$fs-display: 56rpx;
+$fs-h1:      44rpx;
+$fs-h2:      36rpx;
+$fs-body:    28rpx;
+$fs-caption: 24rpx;
+
+/* ===== 间距阶 ===== */
+$space-1: 8rpx; $space-2: 16rpx; $space-3: 24rpx; $space-4: 32rpx; $space-6: 48rpx; $space-8: 64rpx;
+
+/* ===== 圆角 ===== */
+$radius-md: 16rpx;
+$radius-lg: 24rpx;
+$radius-xl: 32rpx;
+
+/* ===== 字族:小程序无 Google Fonts,系统字体堆叠拉差异化 ===== */
+:root {
+  --font-sans:    "PingFang SC", -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Microsoft YaHei", sans-serif;
+  --font-display: "PingFang SC", "SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif;
+}
+page { font-family: var(--font-sans); color: $color-text; background: $color-bg; }
+```
+
+字号、颜色、间距全部走 token,禁页面里硬编码颜色与字号。css 项目同样把这套 token 写进 `app.vue` 的全局 `<style>`。
 
 ---
 
@@ -249,8 +297,9 @@ export function request<T = unknown>(options: RequestOptions): Promise<ApiRespon
       header: {
         Authorization: authorization,
         token: token || '',
-        UnionId: uni.getStorageSync('unionId') || '',
-        OpenId: uni.getStorageSync('openId') || '',
+        // 业务方按需启用:
+        // UnionId: uni.getStorageSync('unionId') || '',
+        // OpenId: uni.getStorageSync('openId') || '',
       },
       success(res) {
         const data = res.data as ApiResponse<T>
@@ -307,6 +356,12 @@ export function request<T = unknown>(options: RequestOptions): Promise<ApiRespon
 - 「登录」按钮 → `request({ api: 'user', url: '...', method: 'POST' })`
 - 「本机号码一键登录」— `<button open-type="getPhoneNumber" @getphonenumber="onGetPhoneNumber">`,解密逻辑注释待接
 
+**视觉要求(默认必做)**:
+- 顶部渐变 hero 区(`linear-gradient` from `$color-brand-500` to `$color-brand-700`),内含 logo 占位 + 大字标题(`$fs-display` + `--font-display`)+ 副标题(`$fs-body` + `$color-text-soft`)
+- 表单区圆角卡片(`$radius-xl`)悬浮在 hero 下方,白底 + 阴影 + 字段间距 `$space-4`
+- 主 CTA 按钮 `:active { transform: scale(0.98); transition: transform 200ms }`,背景 `$color-brand-500`,字色白
+- 「一键登录」用次级样式(描边按钮),与主 CTA 形成层次
+
 `pages.json` 注册路径,**不要**放进 `tabBar.list`。
 
 ---
@@ -330,6 +385,14 @@ export function request<T = unknown>(options: RequestOptions): Promise<ApiRespon
 ```
 
 tabBar 图标用占位图或 uni 默认;登录页与 tabBar **互斥**。
+
+### 首页样板(`pages/index/index.vue`,默认必做)
+
+**禁裸文字 demo**。须含:
+
+- 顶部渐变 banner(`$color-brand-500` → `$color-brand-700` 渐变,圆角下沿 `$radius-xl`),内含欢迎大字标题(`$fs-display` + `--font-display`)+ 一行副标题
+- 卡片网格区:2~3 张功能入口卡(白底 + `$radius-lg` + 阴影 + `:active { transform: scale(0.98) }`),卡内图标占位 + 标题(`$fs-h2`)+ 描述(`$fs-caption` + `$color-text-soft`)
+- 间距用 `$space-*` token,字号≥2 层,字重≥2 层
 
 ### `src/manifest.json`
 
@@ -370,6 +433,12 @@ npm run build:mp-weixin # 产物 dist/build/mp-weixin
 API_MAP + IS_TEST + envVersion;新增域名改 config/env.ts
 ## 调试
 开发者工具勾选不校验合法域名;上线配置 request 合法域名;填写 manifest appid
+## 设计纪律(继承自 ~/.claude/CLAUDE.md)
+- 字体:系统字体堆叠(PingFang SC / SF Pro 优先),正文与标题用不同字重拉层次
+- 主色:占位 brand 色阶在 uni.scss,按品牌替换
+- 背景:渐变 + 装饰光斑,禁纯白纯灰大面积铺底
+- 动效:按钮 :active 微缩放 + transition 200ms
+- 禁:紫色背景或主题色、零动效页面、硬编码颜色字号
 ```
 
 ---
@@ -390,6 +459,7 @@ npm run build:mp-weixin
 | 样式含 rpx;tabBar 可切换;登录页可跳转 |
 | 登录页含手机号/验证码/一键登录 |
 | `getApiBase` 随 envVersion+IS_TEST 切换 |
+| 设计纪律: uni.scss 含 brand 非紫色阶 / 字号阶 / 系统字体堆叠;首页含渐变 banner 与字号≥2 层;按钮含 :active 微动效 |
 
 失败 → 自行修到 build 通过。
 
@@ -403,8 +473,9 @@ npm run build:mp-weixin
 📦 Vue3 + Vite + TS + mp-weixin
 🌐 API_MAP 域名列表(prod/test)
 📁 关键文件清单
+🎨 设计纪律: 系统字体堆叠 / brand 占位色 / 渐变 banner / 已落地
 🚀 npm run dev:mp-weixin → 微信开发者工具打开 dist/dev/mp-weixin
-⚠️ 待替换:manifest appid / 域名 / 业务壳 / 手机号解密 / 合法域名
+⚠️ 待替换:manifest appid / 域名 / 业务壳 / 手机号解密 / 合法域名 / brand 主题色(占位非紫,按品牌换)
 📋 采用的默认值
 ```
 
@@ -412,9 +483,10 @@ npm run build:mp-weixin
 
 ## 铁律
 
-1. **4 问收齐 → 一口气跑完清单 11 项**,中间不确认。
+1. **4 问收齐 → 一口气跑完清单 12 项**,中间不确认。
 2. **固定 uni-app 脚手架**,禁止手写原生 `app.js`/`wxml` 替代。
 3. **默认必有登录页**(手机号验证码+一键登录),不进 tabBar。
 4. **多域名**:`API_MAP`+`IS_TEST`+`__wxConfig.envVersion`,统一 `request(options.api)`,无 proxy。
 5. **scss 必配 modern-compiler**;**会员=否不加 Pinia**。
-6. **交付前 dev:mp-weixin + build:mp-weixin 必须通过**。
+6. **设计纪律必落地** — `uni.scss` 写 `brand` 非紫色阶 + 字号阶 + 系统字体堆叠;登录页 + 首页有渐变 banner 与字层次;按钮含 `:active` 微动效;**禁紫色 / 默认字体一锅煮 / 纯白铺底 / 硬编码颜色字号**。
+7. **交付前 dev:mp-weixin + build:mp-weixin 必须通过**。

@@ -60,6 +60,25 @@ description: >-
 
 ## 生成内容（按用户要的类型）
 
+### 0. 审美默认值（无参照组件 / Tailwind 项目时强制套用）
+
+落地用户级 `~/.claude/CLAUDE.md` 的设计纪律。**有参照组件时严格 follow 参照,本节不生效**;但即使 follow 参照,也要避开下方「禁项」。
+
+**默认产出要素**:
+- **微动效**:交互组件(按钮/卡片/链接)至少一个过渡 — `transition-all duration-200 ease-out`,hover 反馈 `hover:-translate-y-0.5 hover:shadow-md` 或 `hover:bg-brand-50`,active 反馈 `active:scale-[0.98]`
+- **字号 ≥ 2 层 + 字重 ≥ 2 层**:标题 `text-xl font-semibold font-display`,正文 `text-sm text-slate-600`
+- **颜色用主题 token**:Tailwind 项目优先 `brand-*`(项目里若已配)或语义色(`text-slate-900` / `bg-white`),禁裸 hex,禁紫色基调
+- **背景**:卡片类组件用 `bg-white` + `border border-slate-200` 或 `shadow-sm`,**禁纯灰大色块**;Hero/Banner 类组件用渐变 + 圆角
+- **响应式**:含 `md:` / `lg:` 至少一档断点,移动优先
+
+**禁项**(无论是否 follow 参照):
+- 紫色背景 / 紫色主题色
+- 默认系统字体(项目已注入 Google Fonts 时必须用 `font-sans` / `font-display`)
+- 完全无 hover / 无 transition 的静态交互组件
+- 大面积纯白(`bg-white` 全屏)或纯灰(`bg-gray-100` 全屏)铺底,无任何视觉层次
+
+**fe-project-init 项目**:`tailwind.config` 里通常已注册 `brand` + `font-display`,直接用;若发现没有,提示用户先跑 `/fe-project-init` 或手动补 token,再生成。
+
 ### A. 普通组件（`components/Xxx.vue`）
 
 骨架包含：
@@ -153,14 +172,23 @@ export function useXxx(...) {
 
 ## 完成后的报告
 
-生成完后给用户一句话总结：
+生成完后**先自检 3 条设计纪律**(自动跑,不让用户答):
+
+1. 是否避免了纯白 / 纯灰大面积铺底?(组件根容器有边框、阴影、渐变或 token 色)
+2. 是否含至少一个微动效?(`transition` + `hover` / `active` / `focus` 反馈)
+3. 是否有视觉层次?(≥ 2 个字号 + ≥ 2 个字重 / 颜色饱和度)
+
+任一未满足 → 当场补,不向用户交付不合纪律的产物。**有参照组件且参照本身就违反这 3 条**(老代码遗留)→ 仍按参照交付,但在报告里点出待优化项。
+
+然后给用户一句话总结:
 
 ```
 ✅ 已生成 {N} 个文件:
   - components/UserCard.vue (组件骨架)
   - components/UserCard.test.ts (单测占位)
 参照组件:components/ProductCard.vue (复用了它的 scoped 样式风格 + Props 写法)
+设计自检:✓ 非纯白底 / ✓ hover 微动效 / ✓ 字层次双层
 未做:接口对接 (你没提到数据来源,留了 mock 数据 — 要对接告诉我接口路径)
 ```
 
-让用户清楚：**做了什么、参照了什么、留了什么坑**。
+让用户清楚:**做了什么、参照了什么、设计纪律是否过关、留了什么坑**。

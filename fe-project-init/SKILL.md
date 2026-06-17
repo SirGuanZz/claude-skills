@@ -1,18 +1,18 @@
 ---
 name: fe-project-init
 description: >-
-  从 0 创建 H5 前端项目骨架(PC/移动),按问答确定技术栈,
+  从 0 创建 H5 前端项目骨架(PC/移动),按问答确定技术栈、是否接口调用、PC 是否移动自适应,
   自动生成多域名拦截器、设计稿适配、Layout/公共组件,可选会员状态管理。
   Use when the user says "新建项目", "创建项目", "起一个项目", "从零搭项目",
   "初始化项目", "搭个前端架子", or /fe-project-init.
-  答完 8 个问题后自动一口气执行到底,不再二次确认。
+  答完 10 个问题后自动一口气执行到底,不再二次确认。
 ---
 
 # fe-project-init: H5 前端项目从零初始化
 
-从 0 起一个能立即跑起来的 **PC / 移动 H5** 项目骨架，覆盖端适配 → 多域名拦截器 → Layout/公共组件 → 路由 → 验证。
+从 0 起一个能立即跑起来的 **PC / 移动 H5** 项目骨架，覆盖端适配 → (可选)多域名拦截器 → Layout/公共组件 → 路由 → 验证。
 
-**核心纪律**：**只问 8 个问题，答完立刻一口气跑到底**——脚手架、装依赖、写代码、`dev` + `build` + 类型检查，全程不暂停、不二次确认。只有 npm 权限/网络实在跑不通时才停。
+**核心纪律**：**只问 10 个问题，答完立刻一口气跑到底**——脚手架、装依赖、写代码、`dev` + `build` + 类型检查，全程不暂停、不二次确认。只有 npm 权限/网络实在跑不通时才停。
 
 ---
 
@@ -20,30 +20,46 @@ description: >-
 
 | 端 | 允许框架 | 自动修正 | UI 库默认 | 样式默认 | 单位 |
 |----|---------|---------|----------|---------|------|
-| PC | Vue3+Vite / Nuxt3 / React+Vite / Next | — | Vue→Element Plus; React→无 | Sass | px, 主体 1200 |
-| 移动 H5 | Vue3+Vite / Nuxt3 | 端=移动 时框架应为 Vue 系;若选了 Next 改为 Vue3+Vite | Vant | Sass | Sass→px 转 rem; Tailwind→rem 配置 |
+| PC | Vue3+Vite / Nuxt3 / React+Vite / Next | — | Vue→Element Plus; React→无 | **Tailwind** | px, 主体 1200 |
+| 移动 H5 | Vue3+Vite / Nuxt3 | 端=移动 时框架应为 Vue 系;若选了 Next 改为 Vue3+Vite | Vant | **Tailwind** | Tailwind→rem 配置(750 稿);用户选 Sass→px 转 rem |
 
-**Pinia / Zustand**：仅问题 7 选「是」时装;脚手架 `--pinia` 同理。  
-**Tailwind / UnoCSS + 移动 H5**：**禁止** postcss-pxtorem;改 Tailwind `theme.extend` 按 750 设计稿配 spacing/fontSize,或用 `rem` 直接写。
+**项目类型(问题 3)**：纯静态 → **不生成** axios / `.env*` 域名 / `api/request` / dev proxy / 会员;有接口 → 生成完整请求层。  
+**PC 移动自适应(问题 4,仅 PC)**：是 → viewport + 媒体查询响应式;否 → 固定 1200 居中。移动 H5 不适用此问。  
+**Pinia / Zustand**：问题 3=有接口 **且** 问题 9=是 时装;脚手架 `--pinia` 同理。  
+**Tailwind / UnoCSS + 移动 H5**：**禁止** postcss-pxtorem;改 `theme.extend` 按 750 稿配 spacing/fontSize,或用 `rem` 直接写。
+
+**设计纪律(默认按用户级 `~/.claude/CLAUDE.md` 落地,所有端/框架通用)**：
+- **字体**:Google Fonts 双字族(Inter/Manrope 做正文 + Space Grotesk/DM Serif Display 做标题),`<head>` 加 `preconnect`,Tailwind `theme.extend.fontFamily` 注册 `font-sans` / `font-display`。
+- **配色**:在 `tailwind.config` 写 `theme.extend.colors.brand`(占位非紫色,如 `#0EA5E9` / `#F97316` / `#10B981` 三选一),禁默认紫蓝渐变。
+- **背景**:`App.vue` / `app.vue` / 根 layout 用渐变 + SVG 噪点纹理,禁纯白纯灰大面积铺底。
+- **动效**:交互组件至少一个 `transition` + `hover` / `:active` 反馈,150~400ms,`ease-out`。
+- **响应式**:375 / 768 / 1280 三档必须成立。
+
+**Vue Router 5.x 雷区(create-vue 自 2026 起默认拉 v5,非经典 v4)**:
+- 路由**全部同步 import**,首屏页面禁止 `() => import()`(scaffold 默认会给 AboutView 加,**必须改回**)。
+- DefaultLayout 用**裸 `<RouterView />`**,**不默认**配 `<transition mode="out-in">` 或 `<Suspense>`(组合会触发路由切换白屏,刷新才正常)。
+- 真要切换动画,让用户在确认 router 版本兼容后自行加,并务必 Suspense 包异步组件。
 
 ---
 
 ## 启动：问答收集需求（只此一轮,答完即开工）
 
-用 `AskUserQuestion` **一次**收齐 8 项,答完**同一轮**开始执行,禁止再确认。信息不全 → 用「默认值」表 + 决策表,写进最终报告。
+用 `AskUserQuestion` **一次**收齐 10 项,答完**同一轮**开始执行,禁止再确认。信息不全 → 用「默认值」表 + 决策表,写进最终报告。
 
-| # | 问题 | 选项/说明 |
-|---|------|----------|
-| 1 | 框架与渲染模式 | Vue3+Vite / Nuxt3 / React+Vite / Next;与问题 2 冲突以问题 2 为准 |
-| 2 | 端类型 | PC(1920,主体1200,px) / 移动 H5(750,px→rem) |
-| 3 | 语言 | TypeScript(默认) / JavaScript |
-| 4 | 样式 | Sass / SCSS(默认) / CSS / Tailwind / UnoCSS |
-| 5 | UI 组件库 | 按决策表默认;用户指定则覆盖 |
-| 6 | 接口域名 | 名称+dev/prod 地址,至少 1 个(通常 2~4 个);未提供 → `main`+`user` 占位 |
-| 7 | 会员管理 | 是→Pinia/Zustand+登录页+路由守卫;否→不加状态库 |
-| 8 | 项目名+目录 | 默认 `./<项目名>` |
+| # | 问题 | 选项/说明 | 条件 |
+|---|------|----------|------|
+| 1 | 框架与渲染模式 | Vue3+Vite / Nuxt3 / React+Vite / Next;与问题 2 冲突以问题 2 为准 | 必问 |
+| 2 | 端类型 | PC(1920,主体1200,px) / 移动 H5(750,px→rem) | 必问 |
+| 3 | 项目类型 | 纯静态(无接口) / 有接口调用 | **PC 与移动都问** |
+| 4 | 移动端自适应 | 是 / 否 | **仅 PC 时问**;移动 H5 跳过(本身即移动) |
+| 5 | 语言 | TypeScript(默认) / JavaScript | 必问 |
+| 6 | 样式 | **Tailwind(默认)** / Sass / SCSS / UnoCSS / CSS | 必问 |
+| 7 | UI 组件库 | 按决策表默认;用户指定则覆盖 | 必问 |
+| 8 | 接口域名 | 名称+dev/prod 地址,通常 2~4 个;未提供 → `main`+`user` 占位 | **仅问题 3=有接口** |
+| 9 | 会员管理 | 是→Pinia/Zustand+登录页+路由守卫;否→不加状态库 | **仅问题 3=有接口** |
+| 10 | 项目名+目录 | 默认 `./<项目名>` | 必问 |
 
-**默认值**：端=PC,语言=TS,样式=Sass,UI=见决策表,域名=main+user 占位,包管理器=npm(失败可试 pnpm)。
+**默认值**：端=PC,项目类型=有接口,PC自适应=否,语言=TS,样式=**Tailwind**,UI=见决策表,域名=main+user 占位,包管理器=npm(失败可试 pnpm)。
 
 ---
 
@@ -52,16 +68,16 @@ description: >-
 ```
 □ 1. 脚手架非交互跑通 + npm install
 □ 2. .gitignore 含 .env.local / dist
-□ 3. config/design.ts 与端一致
-□ 4. 端适配: PC→layout 1200 | 移动 Sass→flexible+pxtorem+.mobile-container | 移动 Tailwind/UnoCSS→无 pxtorem
-□ 5. .env.example + .env.development/.production(占位);密钥仅 .env.local
-□ 6. config/env.ts + types/api.d.ts + utils/message.ts
-□ 7. api/request.ts 多实例 + dev proxy
+□ 3. config/design.ts 与端/自适应一致
+□ 4. 端适配: PC固定1200 | PC+自适应→媒体查询 | 移动 Sass→flexible+pxtorem | 移动 Tailwind→无 pxtorem
+□ 5. 设计纪律: Google Fonts 双字族(Inter+Space Grotesk 默认) + tailwind.config 注册 font-sans/font-display + theme.extend.colors.brand 非紫调色板
+□ 6. 有接口: .env.example + .env.development/.production + config/env.ts + api/request + dev proxy
+□ 7. 有接口: types/api.d.ts + utils/message.ts;纯静态:仅 utils/message(可选,按 UI 库)
 □ 8. UI 库已安装且已在 main.ts / nuxt.config 注册
-□ 9. layouts + Header/Footer 或 TabBar
-□ 10. 路由(router / pages)
-□ 11. 会员模块(若选是)
-□ 12. 项目 README.md(短)
+□ 9. layouts: 根容器渐变+噪点背景 + Header/Footer 或 TabBar(字号/字重层次到位)
+□ 10. 路由(router / pages) + 首页样板(渐变 hero + 大字标题 + hover 微动效,非裸 demo);Vue 路由全同步 import + 裸 `<RouterView />`
+□ 11. 会员模块(问题 3=有接口 且 问题 9=是)
+□ 12. 项目 README.md(含设计纪律 cheatsheet)
 □ 13. npm run dev + build + 类型检查通过
 ```
 
@@ -73,10 +89,10 @@ description: >-
 
 | 框架 | 命令 | 备注 |
 |------|------|------|
-| Vue3+Vite | `npm create vue@latest <name> -- --ts --router [--pinia]` | `--pinia` 仅会员=是 |
-| Nuxt3 | `npx nuxi@latest init <name>` | 会员=是时加 pinia module |
+| Vue3+Vite | `npm create vue@latest <name> -- --ts --router [--pinia]` | `--pinia` 仅问题 3=有接口且问题 9=是 |
+| Nuxt3 | `npx nuxi@latest init <name>` | 同上时加 pinia module |
 | React+Vite | `npm create vite@latest <name> -- --template react-ts` | |
-| Next.js | `npx create-next-app@latest <name> --yes --ts --eslint --app --src-dir --import-alias "@/*"` | tailwind 与问题4冲突时去掉 --tailwind |
+| Next.js | `npx create-next-app@latest <name> --yes --ts --eslint --app --src-dir --import-alias "@/*"` | tailwind 与问题6冲突时去掉 --tailwind |
 
 非交互 flag 用尽;失败 → 换镜像 / `--legacy-peer-deps` / 删 lock 重装,仍失败才停。
 
@@ -86,21 +102,19 @@ description: >-
 node_modules / dist / .DS_Store / *.local / .env.local / .env.*.local
 ```
 
-`.env.example` — 提交 git,只列 key 与占位 URL。  
-`.env.development` / `.env.production` — 可提交,只用占位域名。  
-`.env.local` — 不提交,放真实域名/密钥(Vite/Nuxt/Next 自动 merge)。  
-加载顺序(Vite):`.env` → `.env.[mode]` → `.env.local` → `.env.[mode].local`。
+纯静态项目可不建 `.env*`,但 `.gitignore` 仍保留以备后续扩展。
 
-### 依赖（按需装）
+### 依赖（按需装,纯静态不装请求相关）
 
-| 用途 | 包 |
-|------|-----|
-| 请求 | axios |
-| 移动 rem(Sass) | postcss postcss-pxtorem |
-| UI | element-plus / vant / @nuxt/ui 等 |
-| 会员持久化 | pinia-plugin-persistedstate / zustand persist |
-| Next dev:prod | env-cmd |
-| 类型检查 | vue-tsc(Vue) / tsc(React) |
+| 用途 | 包 | 条件 |
+|------|-----|------|
+| 请求 | axios | 有接口 |
+| 样式(默认) | tailwindcss + postcss + autoprefixer | 样式=Tailwind |
+| 移动 rem(Sass) | postcss postcss-pxtorem | 移动 H5 + Sass |
+| UI | element-plus / vant / @nuxt/ui 等 | 按问题 7 |
+| 会员持久化 | pinia-plugin-persistedstate / zustand persist | 有接口+会员=是 |
+| Next dev:prod | env-cmd | Next + 有接口 |
+| 类型检查 | vue-tsc(Vue) / tsc(React) | 必装 |
 
 ### UI 库注册（装完必须能用）
 
@@ -111,6 +125,79 @@ node_modules / dist / .DS_Store / *.local / .env.local / .env.*.local
 | React | Ant Design:`ConfigProvider` 包根 + `antd/dist/reset.css` |
 
 **验证**:首页或 Header 放一个库组件(如 `<el-button>`),build 通过且非裸 HTML。
+
+### 设计 token + Google Fonts（默认必做,样式=Tailwind 时强制）
+
+落地用户级 `~/.claude/CLAUDE.md` 的设计纪律。
+
+**1. Google Fonts 注入**
+
+`index.html`(Vue/React/Vite)或 `app.head`(Nuxt 配在 `nuxt.config.ts` 的 `app.head.link`):
+
+```html
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+```
+
+可按项目气质替换:正文(Inter / Manrope / DM Sans)+ 标题(Space Grotesk / DM Serif Display / Playfair Display)。**禁止只用系统默认字体**。
+
+**2. Tailwind 配置(样式=Tailwind 时)**
+
+`tailwind.config.ts` `theme.extend`:
+
+```ts
+export default {
+  content: ['./index.html', './src/**/*.{vue,ts,tsx,js,jsx}'],
+  theme: {
+    extend: {
+      fontFamily: {
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+        display: ['"Space Grotesk"', 'Inter', 'sans-serif'],
+      },
+      colors: {
+        // 占位主色:三选一,禁紫色。生成时随机或按项目气质挑
+        brand: {
+          50:  '#F0F9FF', 100: '#E0F2FE', 500: '#0EA5E9',
+          600: '#0284C7', 700: '#0369A1', 900: '#0C4A6E',
+        },
+        // 备选:橙 #F97316 / 绿 #10B981 / 玫红 #E11D48 / 琥珀 #F59E0B
+      },
+      backgroundImage: {
+        'hero-gradient': 'radial-gradient(at 20% 0%, rgba(14,165,233,0.18), transparent 50%), radial-gradient(at 80% 100%, rgba(16,185,129,0.15), transparent 50%)',
+      },
+    },
+  },
+}
+```
+
+`src/styles/main.css`(或 `app.css`)顶部引入:
+
+```css
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body { @apply font-sans text-slate-900 antialiased; }
+h1, h2, h3 { @apply font-display tracking-tight; }
+```
+
+报告中提示用户:配色为占位色,可在 `tailwind.config` 替换主题色。
+
+**3. Sass / CSS 项目(用户选了 Sass)**
+
+仍注入 Google Fonts。`src/styles/main.scss`:
+
+```scss
+$brand-500: #0EA5E9;
+$brand-600: #0284C7;
+:root {
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-display: 'Space Grotesk', 'Inter', sans-serif;
+}
+html, body { font-family: var(--font-sans); color: #0F172A; -webkit-font-smoothing: antialiased; }
+h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.01em; }
+```
 
 ---
 
@@ -124,11 +211,15 @@ export const DESIGN = {
   platform: 'pc' as Platform,
   designWidth: 1920,      // PC:1920 | 移动:750
   contentWidth: 1200,     // 仅 PC
+  responsive: false,      // 仅 PC+问题4=是 时 true
   unit: 'px' as 'px' | 'px→rem' | 'tailwind-rem',
+  hasApi: true,           // 问题 3=有接口 true;纯静态 false
 } as const
 ```
 
-### PC — `src/styles/layout.scss`
+### PC 固定宽度（问题 4=否）
+
+`src/styles/layout.scss`:
 
 ```scss
 $content-width: 1200px;
@@ -136,7 +227,29 @@ $content-width: 1200px;
 .page-container { width: 100%; max-width: $content-width; margin: 0 auto; padding: 0 16px; box-sizing: border-box; }
 ```
 
-不装 postcss-pxtorem。
+不装 postcss-pxtorem。`DESIGN.responsive = false`。
+
+### PC + 移动端自适应（问题 4=是）
+
+在 PC 固定布局基础上追加响应式,**不**切 rem(保持 PC 设计 px 体系):
+
+- `index.html` 加 viewport meta
+- `layout.scss` 追加断点,建议 `768px` / `1200px`:
+
+```scss
+// 小屏:容器满宽、间距收紧
+@media (max-width: 768px) {
+  .page-container { max-width: 100%; padding: 0 12px; }
+  .app-header { flex-wrap: wrap; }  // 导航可折行或后续改汉堡菜单
+}
+// 中屏:可选介于满宽与 1200 之间
+@media (max-width: 1200px) {
+  .page-container { padding: 0 20px; }
+}
+```
+
+- Header/Footer 组件内部用 `%` / `flex` / `min-width:0`,避免小屏横向溢出
+- `DESIGN.responsive = true`;报告注明断点与待完善汉堡菜单位
 
 ### 移动 H5 + Sass（750→rem）
 
@@ -154,14 +267,14 @@ $content-width: 1200px;
 
 ## 步骤 3：环境变量、类型、拦截器、Proxy
 
-### 目录
+### 有接口（问题 3=有接口）
+
+目录:
 
 ```
 src/config/{env,design}.ts  types/api.d.ts  utils/message.ts  api/{request,modules/example}.ts
 .env.{development,production,example}
 ```
-
-### 环境变量
 
 key → `VITE_API_<KEY>` / `NUXT_PUBLIC_API_<KEY>` / `NEXT_PUBLIC_API_<KEY>`
 
@@ -169,35 +282,19 @@ key → `VITE_API_<KEY>` / `NUXT_PUBLIC_API_<KEY>` / `NEXT_PUBLIC_API_<KEY>`
 |------|------|------|
 | `.env.development` | dev / build:dev | 占位 dev 域名 |
 | `.env.production` | dev:prod / build | 占位 prod 域名 |
-| `.env.local` | 所有 mode,最高优先级 | 真实域名/密钥(不提交) |
-
-### npm scripts
-
-**Vite(Vue/React)**:`dev` / `dev:prod` / `build` / `build:dev` / `typecheck`(vue-tsc 或 tsc -b)
-
-**Nuxt3**:`nuxt dev|build --dotenv .env.{development|production}` / `nuxt typecheck`
-
-**Next.js**:`next dev` / `dev:prod`(env-cmd) / `build` / `typecheck`;需装 env-cmd
-
-### 核心文件
-
-**`types/api.d.ts`** — `ApiResponse<T>{code,data,msg}` + `PageResult<T>`
-
-**`config/env.ts`** — `APP_ENV` / `getApiBase(key)` 读 `.env`
-
-**`utils/message.ts`** — 按 UI 库封装 `showError` / `showSuccess`
+| `.env.local` | 最高优先级 | 真实域名/密钥(不提交) |
 
 **`api/request.ts`** — `createRequest(baseKey)` 多实例;token/Content-Type/timeout/AbortController;解 `ApiResponse`;`code!==0`→showError;401→清登录+跳登录;`cancelAllRequests()`
 
-### Dev Proxy
-
-**Vite** — `vite.config.ts` 每条 API key:`/api-{key}`→`VITE_API_{KEY}`,rewrite 去前缀
-
-**Nuxt** — `nitro.devProxy` 读 `NUXT_PUBLIC_API_*`
-
-**Next** — `rewrites` 或 env-cmd 直连(可选)
+**Dev Proxy** — Vite:`/api-{key}`→`VITE_API_{KEY}`;Nuxt:`nitro.devProxy`;Next:`rewrites` 或 env-cmd
 
 **baseURL**:`import.meta.env.DEV ? '/api-main' : getApiBase('main')`
+
+### 纯静态（问题 3=纯静态）
+
+**不生成**:`api/request.ts`、`config/env.ts`(API 部分)、`.env.development`/`.env.production`、dev proxy、`types/api.d.ts`。
+
+仅保留 `config/design.ts`、`utils/message.ts`(若用 UI 库提示)。首页**不展示** API 信息。README 注明「纯静态,后续加接口见新增域名四件套」。
 
 ---
 
@@ -209,14 +306,33 @@ src/layouts/DefaultLayout.{vue,tsx}  components/layout/{AppHeader,AppFooter}  co
 
 | 端 | Layout | Header | Footer |
 |----|--------|--------|--------|
-| PC | `.page-wrapper`>Header+`.page-container`+Footer | 1200 居中,logo+导航+用户区 | 1200 三段式 |
+| PC | `.page-wrapper`>Header+`.page-container`+Footer | 1200 居中,logo+导航+用户区;自适应时小屏可折行 | 1200 三段式 |
 | 移动 H5 | `.mobile-wrapper`>Header+`.mobile-container`+TabBar | 顶栏 | TabBar,无 Footer |
 
-Popup:`v-model`/`title`/slots。会员=是:Header 右侧登录/头像下拉。
+**根容器视觉(默认必加,落地"避免纯白纯灰"纪律)**:`.page-wrapper` / `.mobile-wrapper` 必须有渐变 + 噪点纹理背景,禁纯 `#fff` / `#f5f5f5` 大面积铺底。`<RouterView />` **裸写**,不默认套 transition / Suspense(见决策表雷区)。Tailwind 项目示例:
+
+```vue
+<template>
+  <div class="relative min-h-screen bg-slate-50 bg-hero-gradient">
+    <div class="pointer-events-none absolute inset-0 opacity-[0.04] [background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22120%22 height=%22120%22><filter id=%22n%22><feTurbulence baseFrequency=%220.9%22/></filter><rect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23n)%22/></svg>')]"></div>
+    <AppHeader />
+    <main class="page-container relative">
+      <RouterView />
+    </main>
+    <AppFooter />
+  </div>
+</template>
+```
+
+Sass 项目:`.page-wrapper { background: radial-gradient(at 20% 0%, rgba(14,165,233,.12), transparent 50%), radial-gradient(at 80% 100%, rgba(16,185,129,.10), transparent 50%), #F8FAFC; }`,噪点同上以伪元素 `::before` 叠加。
+
+**Header 字体层次**:logo 用 `font-display`,导航用 `font-sans` 中等字重(500~600),活跃态用 `text-brand-600` + 下划线动效(`transition-all duration-200`)。
+
+Popup:`v-model`/`title`/slots,过渡用 `transition` 包 `opacity` + `translate-y`,150~250ms `ease-out`。有接口+会员=是:Header 右侧登录/头像下拉。
 
 ---
 
-## 步骤 5：会员管理（仅问题 7=是）
+## 步骤 5：会员管理（问题 3=有接口 且 问题 9=是）
 
 `src/stores/user.ts` — state:`token`/`userInfo`/`isLogin`;actions:`login`/`logout`/`fetchUserInfo`;持久化 localStorage / useCookie(Nuxt)。登录页+拦截器带 token,登录走 `userRequest`。
 
@@ -226,18 +342,58 @@ Popup:`v-model`/`title`/slots。会员=是:Header 右侧登录/头像下拉。
 
 | 框架 | 要点 |
 |------|------|
-| Vue3+Vite | `router`: `/`/`/login`(会员)/`/404`;`beforeEach` 鉴权+`cancelAllRequests()` |
-| Nuxt3 | `pages/`+`error.vue`;会员→`middleware/auth.ts`;css 引入 layout.scss |
+| Vue3+Vite | `router`: `/`/`/login`(会员)/`/404`;有接口+会员→`beforeEach` 鉴权+`cancelAllRequests()` |
+| Nuxt3 | `pages/`+`error.vue`;有接口+会员→`middleware/auth.ts`;css 引入 layout.scss |
 | React+Vite | `react-router-dom` 嵌套 DefaultLayout |
 | Next App Router | `app/layout.tsx` 包 DefaultLayout;客户端组件 `'use client'` |
 
-首页 dev 模式可展示 `API_BASE`+`DESIGN`,须 `if (import.meta.env.DEV)` 包裹。
+### Vue Router 模板（Vue3+Vite，**同步 import，覆盖 scaffold 默认**）
+
+```ts
+import { createRouter, createWebHistory } from 'vue-router'
+import HomeView from '@/views/HomeView.vue'
+import AboutView from '@/views/AboutView.vue'
+
+const router = createRouter({
+  history: createWebHistory(import.meta.env.BASE_URL),
+  routes: [
+    { path: '/', name: 'home', component: HomeView },
+    { path: '/about', name: 'about', component: AboutView },
+  ],
+})
+export default router
+```
+
+`create-vue` 默认把 `AboutView` 写成 `() => import(...)`,**必须改回同步**(v5 + transition 组合白屏)。仅深层非首屏大体积页面才考虑懒加载,且 layout 必须 `<Suspense>` 兜底。
+
+DefaultLayout 里 `<RouterView />` 裸写即可,**默认不加** transition / Suspense。
+
+### 首页 demo(默认必做,**禁止裸文字 demo**)
+
+落地"有审美的样板首页",必须包含:
+
+1. **Hero 区**:大字标题(`font-display` + `text-4xl md:text-6xl` + `tracking-tight` + 渐变文字 `bg-gradient-to-r from-brand-600 to-brand-400 bg-clip-text text-transparent`),副标题正文字族,CTA 按钮带 hover 微动效(`hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200`)。
+2. **Feature Grid**:3 张卡片,圆角 `rounded-2xl`,`shadow-sm` + `hover:shadow-xl` + `hover:-translate-y-1` + `transition`,卡片内图标 + 标题 + 描述,字号至少两层。
+3. **响应式**:`grid-cols-1 md:grid-cols-3`,375 / 768 / 1280 三档不溢出。
+4. **有接口 + dev 模式** 才在页脚 `<details>` 折叠区里展示 `API_BASE` + `DESIGN`(`if (import.meta.env.DEV)` 包裹),不污染审美。纯静态首页不展示这些。
+
+报告中提示:首页为审美样板,正式开发可整体替换。
 
 ---
 
 ## 步骤 7：项目 README.md
 
-生成 **20~40 行** README:启动命令、设计稿约定、域名(.env.example→.env.local)、新增域名四件套同步、后续用 vue-component-gen。
+生成 **25~50 行** README:启动命令、设计稿约定、项目类型(纯静态/有接口)、PC 是否自适应、域名(有接口时 `.env.example`→`.env.local`)、后续用 vue-component-gen,以及 **设计纪律 cheatsheet**:
+
+```markdown
+## 设计纪律(继承自 ~/.claude/CLAUDE.md)
+- 字体:Inter(正文) + Space Grotesk(标题),已通过 Google Fonts 注入
+- 主色:占位 brand 色阶在 tailwind.config(或 main.scss),按品牌替换
+- 背景:渐变 + 噪点,禁纯白纯灰大面积铺底
+- 动效:交互组件 hover/active 微动效,150~400ms ease-out
+- 响应式:375 / 768 / 1280 三断点必须成立
+- 禁:紫色背景或主题色、默认系统字体、SaaS 模板风、零动效静态页
+```
 
 ---
 
@@ -249,10 +405,16 @@ cd <project> && npm install && npm run dev && npm run build && npm run typecheck
 
 | 端 | 检查 |
 |----|------|
-| PC | max-width:1200px |
+| PC 固定 | max-width:1200px |
+| PC 自适应 | 含媒体查询;375px 视口下容器不满宽溢出 |
 | 移动 Sass | dist 含 rem;`.mobile-container` max-width 750px |
 | 移动 Tailwind/UnoCSS | 无 pxtorem;有 mobile-container |
-| H5 通用 | env 注入;proxy 与 .env 一致;UI 库组件 build 通过 |
+| 有接口 | env 注入;proxy 与 .env 一致 |
+| 纯静态 | 无 request.ts / 无 .env 域名文件 |
+| 通用 | UI 库组件 build 通过 |
+| Vue 路由 | router 全同步 import;DefaultLayout 内 `<RouterView />` 裸写,无 transition/Suspense |
+| 路由切换 | dev 起服后**告知用户手测**:点 Header 各 nav 来回切,无空白(SPA 行为 build 验不出) |
+| 设计纪律 | Google Fonts 已 preconnect 且加载;`font-display` 在 h1/h2 生效;`brand` 色阶非紫色;根容器有渐变+噪点;首页含 hover 微动效与字号≥2 层 |
 
 失败 → 自行修到 build + typecheck 通过。
 
@@ -262,11 +424,14 @@ cd <project> && npm install && npm run dev && npm run build && npm run typecheck
 
 ```
 ✅ 项目 {名称} 已初始化
-📦 技术栈 + 端 + 设计稿约定
-🌐 域名列表(dev/prod)
+📦 技术栈 + 端 + 项目类型(纯静态/有接口) + PC自适应(是/否/不适用)
+🧭 vue-router: <从 package.json 读出>(v5.x 时附"路由已全同步 import + 裸 RouterView,规避白屏")
+🌐 域名列表(dev/prod) — 纯静态则标注「无」
 📁 关键文件清单
+🎨 设计纪律: 字族(Inter+Space Grotesk) / brand 占位色 / 渐变背景 / 已落地
 🚀 启动命令
-⚠️ 待替换:域名 / 业务壳 / logo导航 / 备案
+🖱️ 路由切换请手测(SPA 客户端行为,build 验不到)
+⚠️ 待替换:域名 / 业务壳 / logo导航 / 备案 / brand 主题色(占位非紫,按品牌换)
 📋 采用的默认值
 🔗 后续组件 → /vue-component-gen
 ```
@@ -275,9 +440,12 @@ cd <project> && npm install && npm run dev && npm run build && npm run typecheck
 
 ## 铁律
 
-1. **8 问收齐 → 一口气跑完清单 13 项**,中间不确认。
-2. **冲突以「端」为准**;会员=否不加 Pinia/Zustand / `--pinia`。
-3. **移动**:Sass 必须 flexible+pxtorem(75)+mobile-container;Tailwind/UnoCSS 禁止 pxtorem。
-4. **多域名**:`.env*`+`env.ts`+request 多实例+dev proxy。
-5. **UI 装必注册**;**DefaultLayout+路由按框架落地**;**ApiResponse 骨架**注释待调。
-6. **YAGNI**;**交付前 dev+build+typecheck 必须通过**。
+1. **10 问收齐 → 一口气跑完清单**,中间不确认;问题 4/8/9 按条件跳过时用默认值并记入报告。
+2. **冲突以「端」为准**;有接口+会员=是才加 Pinia/Zustand / `--pinia`。
+3. **纯静态 YAGNI** — 不加 axios/env/proxy/request/会员/登录页。
+4. **PC+自适应** — viewport+媒体查询,不引入 rem 体系;**移动 H5** Sass 必须 flexible+pxtorem(75)。
+5. **有接口** — `.env*`+`env.ts`+request 多实例+dev proxy 四件套齐全。
+6. **UI 装必注册**;**DefaultLayout+路由按框架落地**。
+7. **设计纪律必落地** — Google Fonts 双字族 + `brand` 非紫色阶 + 根容器渐变噪点 + 首页样板含微动效;**禁紫色 / 默认系统字体 / 纯白铺底 / 零动效**。
+8. **Vue 路由保底** — 路由全同步 import(覆盖 scaffold 默认懒加载),DefaultLayout 用裸 `<RouterView />`,**默认不上 transition/Suspense**(vue-router 5.x 组合会白屏)。
+9. **交付前 dev+build+typecheck 必须通过**;SPA 路由切换属客户端行为,显式告知用户手测。
