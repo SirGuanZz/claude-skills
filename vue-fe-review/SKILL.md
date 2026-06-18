@@ -1,7 +1,7 @@
 ---
 name: vue-fe-review
 description: >-
-  Review Vue3 + TS + Nuxt 代码,专抓响应式陷阱、SSR 反模式、性能/内存、页面加载速度问题。
+  Review Vue3 + TS + Nuxt 代码,专抓响应式陷阱、SSR 反模式、路由硬编码跳转、性能/页面加载速度问题。
   Use when the user says "review 一下", "看看这段代码", "帮我审一下", "前端 review",
   "这代码有啥问题", or /vue-fe-review.
   一轮输出完整结论;提完建议后自省一次,仅优化空间大时补充,否则收口。只报告不擅自改代码。
@@ -100,18 +100,55 @@ const { data } = await useFetch('/api/extra', { lazy: true })
 - 请求无 try/catch、`useFetch` 未消费 `error.value`
 - 列表 / 详情无 loading / 空态(用户可见白屏)
 
-### 7. 可访问性(仅 🔴)
+### 7. 路由与跳转(硬编码 path)
+
+diff 出现 `window.location.href` / `location.assign` / `location.replace` / `location.href =` 等**站内路径**硬编码时,**必须先核对项目实际路由**再下结论:
+
+**核对来源**(按框架,能读则读):
+- Vue Router:`src/router/index.ts` 或 `src/router/routes.*`
+- Nuxt:`pages/` 目录结构(文件路径即路由)
+- 小程序式 Nuxt 模块:`pages.json` 的 `pages`
+
+**🔴(路径不存在或必 404)**:
+- 硬编码 path 在路由表 / `pages/` 中**找不到对应页面**,如 `window.location.href = '/login'` 但项目无 `pages/login` 且无 `/login` 路由
+- 拦截器 401 / 4001 跳登录写死 `/login`,与项目实际登录 path 不一致(常见:`/user/login`、`/pages/login/login`)
+- 大小写 / 尾斜杠与路由定义不一致导致生产 404
+
+**🟡(路径存在但写法不当)**:
+- 应用内跳转用 `window.location.href` 整页刷新,破坏 SPA 状态、SSR hydration — 应改用:
+  - Nuxt:`await navigateTo('/login')` 或 `navigateTo({ name: 'login' })`
+  - Vue Router:`router.push('/login')` 或 `router.push({ name: 'Login' })`
+- 多处散落相同硬编码 path,未集中为路由常量(如 `ROUTES.LOGIN`)
+
+**不报**:外链 `window.location.href = 'https://...'`、用户明确要求的新开窗口 `window.open(url, '_blank')`。
+
+```ts
+// ❌ 未核对路由 — 项目可能根本没有 /login
+window.location.href = '/login'
+
+// ✅ Nuxt(已确认 pages/login.vue 存在)
+await navigateTo('/login')
+
+// ✅ Vue Router
+import { useRouter } from 'vue-router'
+const router = useRouter()
+router.push('/login')
+```
+
+报告须写明:**核对过哪些路由文件、项目实际登录 path 是什么、建议改成什么**。
+
+### 8. 可访问性(仅 🔴)
 - `<div @click>` 假按钮(无 role / 键盘可达)
 - 关键图无 `alt`、表单无 `label`
 
 不深扫 a11y。
 
-### 8. fe-project-init 约定(存在 `src/config/design.ts` 时)
+### 9. fe-project-init 约定(存在 `src/config/design.ts` 时)
 - 端 / 单位混用:PC 缺 1200 容器、移动缺 rem + 750 封顶、小程序误用 pxtorem
 - 绕过 `config/env.ts` 直接拼 `import.meta.env.VITE_API_*`
 - 绕过 `api/request.ts` 裸 axios / fetch
 
-### 9. 设计纪律(仅 UI diff)
+### 10. 设计纪律(仅 UI diff)
 
 触发:`.vue` template / `tailwind.config*` / 全局样式(main.scss / app.css / uni.scss) / 字体相关。**纯逻辑 diff 跳过**。
 
@@ -155,12 +192,13 @@ const { data } = await useFetch('/api/extra', { lazy: true })
 ## vue-fe-review 完成(一轮)
 **范围**: N 个文件,约 M 行变更
 
-## 🔴 必改(线上风险 / 数据错乱 / SSR 报错)
-1. `UserCard.vue:23` — props 解构丢失响应式
-   原因: count 不会跟随父级更新
+## 🔴 必改(线上风险 / 数据错乱 / SSR 报错 / 路由 404)
+1. `api/request.ts:42` — `window.location.href = '/login'` 但项目无 `/login` 路由
+   原因: 401 时跳转 404,用户无法登录
+   核对: `pages/` 仅有 `pages/user/login.vue` → 实际 path `/user/login`
    建议:
-   const props = defineProps<{ count: number }>()
-   // 用 props.count
+   await navigateTo('/user/login')  // Nuxt
+   // 或 router.push('/user/login')
 
 ## 🟡 建议改(性能 / 维护性 / 加载速度)
 1. `pages/index.vue:8` — 同步 import echarts 增大首屏 bundle → 改 `defineAsyncComponent`

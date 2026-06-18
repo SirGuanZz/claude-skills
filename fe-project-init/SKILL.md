@@ -2,7 +2,7 @@
 name: fe-project-init
 description: >-
   从 0 创建 H5 前端项目骨架(PC/移动),按问答确定技术栈、是否接口调用、PC 是否移动自适应,
-  自动生成多域名拦截器、设计稿适配、Layout/公共组件,可选会员状态管理。
+  自动生成多域名拦截器、设计稿适配、Layout/公共组件、骨架中文注释与 README 目录导读,可选会员状态管理。
   Use when the user says "新建项目", "创建项目", "起一个项目", "从零搭项目",
   "初始化项目", "搭个前端架子", or /fe-project-init.
   答完 10 个问题后自动一口气执行到底,不再二次确认。
@@ -63,6 +63,100 @@ description: >-
 
 ---
 
+## 步骤 0：代码注释规范（开工前必读）
+
+骨架代码须让**后续接手的人不读 SKILL 也能懂**。先看完本节再写任何文件。
+
+### 风格铁律（4 条,继承自用户级 `~/.claude/CLAUDE.md`）
+
+1. **WHY 不 WHAT** — 解释为什么这样写(约束、副作用、修改注意),不解释字面在做什么(变量/函数名能看懂的别注)。
+2. **中文为主,术语保留英文** — baseURL / interceptor / middleware / token / composable 等不翻译。
+3. **文件头三段式** — `职责` + `依赖方(谁读它)` + `修改注意点(改这里同步改哪里)`,缺一不可。
+4. **禁废话注释** — "定义变量"/"调用函数"/"导入路由"/"创建 store" 一律不写。
+
+### 必加注释文件清单（按生成顺序）
+
+| 文件 | 必加内容 | 条件 |
+|------|---------|------|
+| `src/config/design.ts` | 文件头三段式 + 每个字段一行含义 | 必 |
+| `src/config/env.ts` | 文件头三段式 + `getApiBase` 何时读 dev/prod | 有接口 |
+| `src/types/api.d.ts` | `ApiResponse` 注「按后端实际结构调整」+ 字段含义 | 有接口 |
+| `src/api/request.ts` | 文件头三段式 + 多实例用法 + 请求/响应拦截分段 + 401 跳转路由名 | 有接口 |
+| `src/api/modules/*.ts` | 每个导出函数 JSDoc(`@param`/`@returns` + 业务说明) | 有接口 |
+| `src/stores/user.ts` | 文件头(持久化方式 + token 字段 + 与拦截器的关系) | 会员=是 |
+| `src/router/index.ts` 或 `middleware/auth.ts` | 路由表分段 + `beforeEach`/middleware 鉴权分段 | Vue/Nuxt |
+| `src/layouts/DefaultLayout.{vue,tsx}` | 文件头(PC/移动差异 + 为何 RouterView 裸写) | 必 |
+| `src/components/layout/AppHeader.{vue,tsx}` | 文件头 + 用户区/导航条件渲染分段 | 必 |
+| `src/components/common/AppPopup.{vue,tsx}` | 文件头 + props 含义 + slots 用途 | 必 |
+| 首页 `views/HomeView.vue` 或 `pages/index.vue` | 文件头标注「审美样板,正式开发可整体替换」 | 必 |
+| `views/LoginView.vue` | 文件头 + 表单/校验/登录流程分段 | 会员=是 |
+| `.env.example` | 每个 key 行尾 `#` 注释用途 + 示例值 | 有接口 |
+| `tailwind.config.{ts,js}` | `theme.extend.colors.brand` 注「占位色,按品牌替换」 | Tailwind |
+| `README.md` | 「目录导读」表 + 「设计纪律 cheatsheet」 | 必 |
+
+### 风格示例（直接照抄）
+
+**1. 文件头三段式(所有 config / api / store / layout 必做)**
+
+```ts
+/**
+ * 设计稿与端适配约定 — 全项目 UI 单位/布局的单一真相源
+ * 依赖方:layouts/* 媒体查询、tailwind.config spacing、vue-component-gen 读 platform 字段
+ * 修改注意:改 designWidth/platform 时同步检查 layout 与 tailwind 配置;勿改导出字段名
+ */
+```
+
+**2. 接口函数 JSDoc(`api/modules/*`)**
+
+```ts
+/**
+ * 获取当前登录用户信息
+ * @returns 用户基础资料 + 角色码;401 由 request 拦截器统一跳登录,无需调用方处理
+ */
+export const getUserInfo = () => userRequest.get<UserInfo>('/user/info')
+```
+
+**3. 拦截器分段(`api/request.ts`)**
+
+```ts
+// --- 请求拦截:附加 token + Content-Type;FormData 时不覆盖浏览器自动 boundary ---
+// --- 响应拦截:解 ApiResponse 业务壳;code !== 0 → showError;401 → 清登录态并跳 /login ---
+```
+
+**4. 路由表分段(`router/index.ts`)**
+
+```ts
+const routes = [
+  // --- 公开路由 ---
+  { path: '/', name: 'home', component: HomeView },
+  // --- 鉴权路由(beforeEach 校验 token) ---
+  { path: '/profile', name: 'profile', component: ProfileView, meta: { auth: true } },
+]
+```
+
+**5. `.env.example` 行尾注释**
+
+```bash
+VITE_API_MAIN=https://dev-api.example.com   # 主业务域名,联调时改 .env.local 覆盖
+VITE_API_USER=https://dev-user.example.com  # 用户中心域名
+```
+
+**6. 禁止的废话注释(反例 vs 正例)**
+
+```ts
+// ❌ 反例:在说"做了什么",删
+// 导入 axios
+import axios from 'axios'
+// 创建 user store
+export const useUserStore = defineStore(...)
+
+// ✅ 正例:解释"为什么"
+// 不同业务域走独立实例:baseURL 隔离 + 401 跳转互不干扰
+const userRequest = createRequest('user')
+```
+
+---
+
 ## 执行清单（全部 ✓ 后再出报告）
 
 ```
@@ -77,8 +171,9 @@ description: >-
 □ 9. layouts: 根容器渐变+噪点背景 + Header/Footer 或 TabBar(字号/字重层次到位)
 □ 10. 路由(router / pages) + 首页样板(渐变 hero + 大字标题 + hover 微动效,非裸 demo);Vue 路由全同步 import + 裸 `<RouterView />`
 □ 11. 会员模块(问题 3=有接口 且 问题 9=是)
-□ 12. 项目 README.md(含设计纪律 cheatsheet)
-□ 13. npm run dev + build + 类型检查通过
+□ 12. 按「步骤 0」清单逐项加注释(文件头三段式 / 分段标注 / 函数 JSDoc / `.env.example` 行尾 `#`),清单缺一即未通过
+□ 13. 项目 README.md(含设计纪律 + 目录导读 cheatsheet)
+□ 14. npm run dev + build + 类型检查通过
 ```
 
 ---
@@ -206,14 +301,19 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.01em; }
 ### `src/config/design.ts`
 
 ```ts
+/**
+ * 设计稿与端适配约定 — 全项目 UI 单位/布局的单一真相源
+ * - 改设计稿宽度或端类型时同步检查 layout 样式与 tailwind 配置
+ * - vue-component-gen 会读取本文件,勿随意改名导出字段
+ */
 export type Platform = 'pc' | 'mobile'
 export const DESIGN = {
   platform: 'pc' as Platform,
   designWidth: 1920,      // PC:1920 | 移动:750
-  contentWidth: 1200,     // 仅 PC
-  responsive: false,      // 仅 PC+问题4=是 时 true
+  contentWidth: 1200,     // 仅 PC 内容区最大宽度(px)
+  responsive: false,      // PC+问题4=是 → true,启用 layout 媒体查询
   unit: 'px' as 'px' | 'px→rem' | 'tailwind-rem',
-  hasApi: true,           // 问题 3=有接口 true;纯静态 false
+  hasApi: true,           // 问题3=有接口;纯静态项目改为 false
 } as const
 ```
 
@@ -294,7 +394,7 @@ key → `VITE_API_<KEY>` / `NUXT_PUBLIC_API_<KEY>` / `NEXT_PUBLIC_API_<KEY>`
 
 **不生成**:`api/request.ts`、`config/env.ts`(API 部分)、`.env.development`/`.env.production`、dev proxy、`types/api.d.ts`。
 
-仅保留 `config/design.ts`、`utils/message.ts`(若用 UI 库提示)。首页**不展示** API 信息。README 注明「纯静态,后续加接口见新增域名四件套」。
+仅保留 `config/design.ts`、`utils/message.ts`(若用 UI 库提示)。首页**不展示** API 信息。README 注明「纯静态,后续加接口见新增域名四件套」。纯静态仍须 `design.ts` + Layout + README **目录导读**注释。
 
 ---
 
@@ -383,9 +483,18 @@ DefaultLayout 里 `<RouterView />` 裸写即可,**默认不加** transition / Su
 
 ## 步骤 7：项目 README.md
 
-生成 **25~50 行** README:启动命令、设计稿约定、项目类型(纯静态/有接口)、PC 是否自适应、域名(有接口时 `.env.example`→`.env.local`)、后续用 vue-component-gen,以及 **设计纪律 cheatsheet**:
+生成 **25~50 行** README:启动命令、设计稿约定、项目类型(纯静态/有接口)、PC 是否自适应、域名(有接口时 `.env.example`→`.env.local`)、后续用 vue-component-gen,以及 **设计纪律 cheatsheet** + **目录导读**:
 
 ```markdown
+## 目录导读(给后续开发者)
+| 路径 | 职责 |
+|------|------|
+| src/config/design.ts | 设计稿/端/单位约定,改 UI 先看 |
+| src/config/env.ts | 域名与 getApiBase(有接口时) |
+| src/api/request.ts | 统一请求与拦截器,页面勿裸 axios |
+| src/layouts/ | 全局布局,PC/移动结构差异见文件头注释 |
+| src/stores/user.ts | 登录态(有会员时) |
+
 ## 设计纪律(继承自 ~/.claude/CLAUDE.md)
 - 字体:Inter(正文) + Space Grotesk(标题),已通过 Google Fonts 注入
 - 主色:占位 brand 色阶在 tailwind.config(或 main.scss),按品牌替换
@@ -415,6 +524,7 @@ cd <project> && npm install && npm run dev && npm run build && npm run typecheck
 | Vue 路由 | router 全同步 import;DefaultLayout 内 `<RouterView />` 裸写,无 transition/Suspense |
 | 路由切换 | dev 起服后**告知用户手测**:点 Header 各 nav 来回切,无空白(SPA 行为 build 验不出) |
 | 设计纪律 | Google Fonts 已 preconnect 且加载;`font-display` 在 h1/h2 生效;`brand` 色阶非紫色;根容器有渐变+噪点;首页含 hover 微动效与字号≥2 层 |
+| 代码注释 | 按「步骤 0」清单逐项核对:文件头三段式 / 拦截器与路由分段 / 接口函数 JSDoc / `.env.example` 行尾 `#` / README 目录导读,缺一即未通过 |
 
 失败 → 自行修到 build + typecheck 通过。
 
@@ -428,6 +538,7 @@ cd <project> && npm install && npm run dev && npm run build && npm run typecheck
 🧭 vue-router: <从 package.json 读出>(v5.x 时附"路由已全同步 import + 裸 RouterView,规避白屏")
 🌐 域名列表(dev/prod) — 纯静态则标注「无」
 📁 关键文件清单
+📝 已加多人协作注释 + README 目录导读
 🎨 设计纪律: 字族(Inter+Space Grotesk) / brand 占位色 / 渐变背景 / 已落地
 🚀 启动命令
 🖱️ 路由切换请手测(SPA 客户端行为,build 验不到)
@@ -449,3 +560,4 @@ cd <project> && npm install && npm run dev && npm run build && npm run typecheck
 7. **设计纪律必落地** — Google Fonts 双字族 + `brand` 非紫色阶 + 根容器渐变噪点 + 首页样板含微动效;**禁紫色 / 默认系统字体 / 纯白铺底 / 零动效**。
 8. **Vue 路由保底** — 路由全同步 import(覆盖 scaffold 默认懒加载),DefaultLayout 用裸 `<RouterView />`,**默认不上 transition/Suspense**(vue-router 5.x 组合会白屏)。
 9. **交付前 dev+build+typecheck 必须通过**;SPA 路由切换属客户端行为,显式告知用户手测。
+10. **骨架必带中文注释** — 严格按「步骤 0」清单与示例风格落地:WHY 不 WHAT、中文为主、文件头三段式、禁废话注释;清单缺一视为未完成。

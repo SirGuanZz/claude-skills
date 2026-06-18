@@ -1,0 +1,71 @@
+/* ===== 设计 token — 落地全局协作约定 (~/.claude/CLAUDE.md) =====
+ * 颜色 brand 占位 cyan/sky 色阶 (非紫),按品牌替换
+ * 字号/间距/圆角全部走 token,禁页面里硬编码
+ * 字族用系统堆叠 (PingFang SC / SF Pro Display 优先),拉开正文与标题层次
+ */
+
+/* ===== 颜色:brand 占位非紫 ===== */
+$color-brand-50: #f0f9ff;
+$color-brand-100: #e0f2fe;
+$color-brand-200: #bae6fd;
+$color-brand-500: #0ea5e9;
+$color-brand-600: #0284c7;
+$color-brand-700: #0369a1;
+
+$color-text: #0f172a;
+$color-text-soft: #475569;
+$color-text-mute: #94a3b8;
+$color-line: #e2e8f0;
+$color-bg: #f8fafc;
+$color-bg-card: #ffffff;
+$color-danger: #ef4444;
+$color-warning: #f59e0b;
+$color-success: #10b981;
+
+/* ===== 字号阶 (rpx);设计稿 750 ===== */
+$fs-display: 56rpx;
+$fs-h1: 44rpx;
+$fs-h2: 36rpx;
+$fs-h3: 32rpx;
+$fs-body: 28rpx;
+$fs-caption: 24rpx;
+
+/* ===== 间距阶 ===== */
+$space-1: 8rpx;
+$space-2: 16rpx;
+$space-3: 24rpx;
+$space-4: 32rpx;
+$space-5: 40rpx;
+$space-6: 48rpx;
+$space-8: 64rpx;
+
+/* ===== 圆角 ===== */
+$radius-sm: 8rpx;
+$radius-md: 16rpx;
+$radius-lg: 24rpx;
+$radius-xl: 32rpx;
+$radius-pill: 999rpx;
+
+/* ===== uni 默认变量保留(部分插件依赖) ===== */
+$uni-color-primary: $color-brand-500;
+$uni-color-success: $color-success;
+$uni-color-warning: $color-warning;
+$uni-color-error: $color-danger;
+$uni-text-color: $color-text;
+$uni-bg-color: $color-bg;
+
+/* ===== 字族:小程序无 Google Fonts,系统字体堆叠拉差异化 ===== */
+:root {
+  --font-sans: "PingFang SC", -apple-system, BlinkMacSystemFont, "Helvetica Neue",
+    "Microsoft YaHei", sans-serif;
+  --font-display: "PingFang SC", "SF Pro Display", -apple-system, BlinkMacSystemFont,
+    sans-serif;
+}
+
+page {
+  font-family: var(--font-sans);
+  color: $color-text;
+  background: $color-bg;
+  font-size: $fs-body;
+  line-height: 1.5;
+}

@@ -1,15 +1,34 @@
 # claude-skills
 
-我的 Claude Code 个人技能集，主要面向 Vue3 + TypeScript + Nuxt 的前端日常开发。
+个人 Agent Skills 仓库，面向 **Vue3 + TypeScript + Nuxt** 与 **uni-app 微信小程序** 的日常开发。同时支持 **Claude Code** 与 **Cursor**。
 
 ## 包含的 Skills
 
-| Skill | 作用 |
-|-------|------|
-| [`fe-project-init`](./fe-project-init) | 从零创建 H5 项目骨架(PC/移动/纯静态或有接口/PC自适应),答完 10 问自动跑到底 |
-| [`mp-project-init`](./mp-project-init) | 用 uni-app 从零创建微信小程序骨架(Vue3+Vite+TS),多域名拦截器/登录页/tabBar,答完 4 问自动跑到底 |
-| [`vue-component-gen`](./vue-component-gen) | 快速生成 Vue3 + TS + Nuxt 组件/页面骨架,自动匹配项目目录约定、UI 库、状态库、请求封装 |
-| [`vue-fe-review`](./vue-fe-review) | Review Vue3 + TS + Nuxt 代码,专抓响应式陷阱、SSR 反模式、性能/内存问题 |
+| Skill | 触发 | 作用 |
+|-------|------|------|
+| [`fe-project-init`](./fe-project-init) | `/fe-project-init`、新建 H5 项目 | PC/移动 H5 骨架；10 问(技术栈/纯静态或有接口/PC自适应等)；Tailwind 设计纪律；多域名拦截器；**骨架中文注释 + README 目录导读** |
+| [`mp-project-init`](./mp-project-init) | `/mp-project-init`、新建小程序 | uni-app + Vue3 + Vite + TS；5 问(方向商城/新闻/视频/样式/域名/会员)；tabBar + 登录页 + envVersion 域名切换；**注释 + 目录导读** |
+| [`vue-component-gen`](./vue-component-gen) | `/vue-component-gen`、生成组件/页面 | 匹配项目目录、UI 库、请求封装；自动读 `config/design.ts`、`config/env.ts` |
+| [`vue-fe-review`](./vue-fe-review) | `/vue-fe-review`、review 代码 | 一轮 review；响应式/SSR/路由硬编码/加载速度；**只报告不改代码**；自省一次后收口 |
+
+### 推荐工作流
+
+```
+新建 H5     → fe-project-init
+新建小程序   → mp-project-init
+写页面组件   → vue-component-gen（会读 fe/mp 项目里的 config）
+合入前审查   → vue-fe-review（确认后再说「按 review 改」）
+```
+
+**分工**：`fe-project-init` 只管 H5；小程序统一走 `mp-project-init`，互不混用。
+
+### 生成项目的协作约定
+
+`fe-project-init` / `mp-project-init` 生成的骨架默认包含：
+
+- 关键文件**文件头中文注释**（职责、依赖、修改注意点）
+- `README.md` **目录导读表**（`pages.json` 等 JSON 无法注释的内容写在 README）
+- 禁止「定义变量」类废话注释
 
 ## 安装
 
@@ -29,51 +48,60 @@ cd $HOME\claude-skills
 .\install.ps1
 ```
 
-安装脚本会把每个 skill 软链接到 **Claude Code**（`~/.claude/skills/`）和 **Cursor**（`~/.cursor/skills/`）。已存在的同名目录会自动备份成 `xxx.backup-<时间戳>`。
+安装脚本会把每个 skill **软链接**到：
 
-## 更新
+| 工具 | 路径 |
+|------|------|
+| Claude Code | `~/.claude/skills/` |
+| Cursor | `~/.cursor/skills/` |
 
-软链接的好处是更新无成本：
+已存在的同名目录会自动备份为 `xxx.backup-<时间戳>`。
 
-```bash
-cd ~/claude-skills
-git pull   # 拉最新内容,符号链接自动指向新版本
-```
-
-## 使用
-
-在 Claude Code 里：
-
-- 直接打 `/fe-project-init` / `/mp-project-init` / `/vue-component-gen` / `/vue-fe-review`
-- 或用自然语言触发,如 "帮我建个用户卡片组件"、"review 一下这段代码"、"从零搭个 H5 项目"、"新建小程序"
-
-Claude Code 与 Cursor 安装路径分别为 `~/.claude/skills/`、`~/.cursor/skills/`。仅装 Cursor 时可执行:
+**仅装 Cursor**：
 
 ```bash
 INSTALL_TARGETS="$HOME/.cursor/skills" bash install.sh
 ```
 
+**仅装 Claude Code**：
+
+```bash
+INSTALL_TARGETS="$HOME/.claude/skills" bash install.sh
+```
+
+## 更新
+
+```bash
+cd ~/claude-skills
+git pull   # 软链接自动指向新版本
+bash install.sh   # 有新 skill 时补链
+```
+
+## 使用
+
+在 Claude Code 或 Cursor 中：
+
+- 斜杠命令：`/fe-project-init` `/mp-project-init` `/vue-component-gen` `/vue-fe-review`
+- 自然语言：「从零搭个 H5 项目」「新建小程序」「review 一下这段代码」「建一个用户卡片组件」
+
+安装或更新后**新开 Agent 会话**再使用。
+
 ## 卸载
 
 ```bash
-rm ~/.claude/skills/fe-project-init
-rm ~/.claude/skills/mp-project-init
-rm ~/.claude/skills/vue-component-gen
-rm ~/.claude/skills/vue-fe-review
-rm ~/.cursor/skills/fe-project-init
-rm ~/.cursor/skills/mp-project-init
-rm ~/.cursor/skills/vue-component-gen
-rm ~/.cursor/skills/vue-fe-review
+rm ~/.claude/skills/fe-project-init ~/.claude/skills/mp-project-init
+rm ~/.claude/skills/vue-component-gen ~/.claude/skills/vue-fe-review
+rm ~/.cursor/skills/fe-project-init ~/.cursor/skills/mp-project-init
+rm ~/.cursor/skills/vue-component-gen ~/.cursor/skills/vue-fe-review
 ```
 
-(只删软链接,源文件还在 `~/claude-skills/`)
+只删软链接，源文件仍在 `~/claude-skills/`。
 
 ## 添加新 Skill
 
-1. 在仓库根目录建子目录 `<skill-name>/`
-2. 写 `SKILL.md`(参考现有的格式)
-3. 重新跑 `bash install.sh`
-4. 提交并 push
+1. 根目录建 `<skill-name>/SKILL.md`
+2. `bash install.sh` 或 `.\install.ps1`
+3. 在本 README 表格补一行说明
 
 ## License
 
