@@ -15,30 +15,39 @@ description: >-
 ## 核心纪律
 
 1. **只读不改** — 默认仅输出报告;用户说「按 review 改」「帮我修」后才编辑文件。改完后**不再**主动自省或提议二轮 review。
-2. **一轮 + 自省一次** — 扫描 → 首轮报告 → 内部自省一次 → 收口。禁止第三轮思考。
-3. **自省判定** — 假设用户已采纳全部首轮建议,**仍有 🔴 或明显 🟡** 遗漏 / 连锁问题 → 同份报告追加「补充建议」;只剩锦上添花、风格、主观审美 → 直接收口,不写补充。
+2. **一轮 + 自省一次** — 扫描 → 首轮报告 → 内部自省一次 → **输出自省结论** → 收口。禁止第三轮思考。
+3. **自省判定** — 假设用户已采纳全部首轮建议,**仍有 🔴 或明显 🟡** 遗漏 / 连锁问题 → 同份报告追加「补充建议」,自省结论标记「追加 N 项」;只剩锦上添花、风格、主观审美 → 直接收口,自省结论标记「未发现遗漏」。
 4. **无 🔴🟡 = 可合入** — 不凑 🟢、不编造优化点、不翻旧代码的账(除非本次 diff 连锁出 bug)。🟢 仅在用户明确「深度 review」时输出。
 
 ## 启动:确定范围
 
-用户已指定范围(文件 / 文件夹 / diff / PR) → 直接执行,不再问。
-未指定 → `AskUserQuestion` 问一次:
+**默认走 `git diff` + `git diff --cached`**,无需询问,直接读 → 进入检查。
+
+仅在以下情况才 `AskUserQuestion`:
+- diff 为空(无未提交改动)→ 弹下表让用户挑
+- 用户给的范围模糊(如「review 一下登录模块」但路径不明)
 
 | 选项 | 含义 |
 |------|------|
-| 当前 git diff | `git diff` + `git diff --cached` |
-| 指定文件 | 1 个或多个文件路径(追问) |
+| 当前 git diff | `git diff` + `git diff --cached`(默认,无需询问) |
+| 指定文件 | 1 个或多个文件路径 |
 | 指定文件夹 | 递归扫 `.vue` / `.ts` / `.tsx` / `.js`,跳过 `node_modules` / `dist` / `.nuxt` |
 | 指定 PR/commit | `git show <ref>` 或 `git diff <base>..<head>` |
 
-- diff 为空 → 告知,请改选文件 / 文件夹。
+- 用户已点名范围(文件 / 文件夹 / PR)→ 直接执行,不要再问。
 - 文件夹下源文件 >30 → 先列清单确认是否全扫。
 
 读完后一句话说明范围(模式 + 路径 + 文件数),立即进入检查。
 
-## 检查维度(按序,只扫 diff 行)
+## 检查维度(按风险层级,只扫 diff 行)
 
-### 1. 响应式陷阱
+按 **A 线上风险 → B 性能 → C 维护性** 顺序扫,先抓致命项,再谈优化。
+
+---
+
+### A. 线上风险层(直接挂线上 / 数据错乱 / SSR 报错 / 404)
+
+#### A1. 响应式陷阱
 - props 解构丢响应式(Vue <3.5 或编译器未开 reactive props destructure)
 - `reactive` 对象解构 / 整体替换 → 失去响应式
 - ref 嵌在普通对象里未 unwrap
@@ -46,7 +55,7 @@ description: >-
 - computed 含副作用(请求 / 赋值 / log)
 - 会增删 / 重排的 `v-for` 用 `index` 当 key
 
-### 2. Nuxt SSR 反模式
+#### A2. Nuxt SSR 反模式
 - 顶层访问 `window` / `document` / `localStorage`(应 `import.meta.client` 守卫或挪 `onMounted`)
 - `<script setup>` 顶层裸 `await fetch`(应 `useFetch` / `useAsyncData`)
 - 跨组件共享态用普通 `ref` 而非 `useState`
@@ -54,18 +63,52 @@ description: >-
 - SSR 路径下 `watch` 跑副作用
 - `runtimeConfig` 私密字段无 `public.` 前缀 → 泄漏客户端 bundle
 
-### 3. TypeScript 严重问题
-- 无理由的 `any` / `as any`
-- 可换类型守卫的 `as Foo`、危险 `!` 非空断言
-- 前端字段名与后端响应不一致(`userId` vs `user_id`)
+#### A3. 路由与跳转(硬编码 path)
 
-### 4. 性能 / 内存
-- `addEventListener` / `setInterval` / `setTimeout` 未在 `onBeforeUnmount` 清理
-- 大列表(>500 项且已卡)无虚拟滚动
-- computed 内 O(n²) 重计算
-- 大对象 / 不需响应的数据用深 `ref`(应 `shallowRef` / `markRaw`)
+diff 出现 `window.location.href` / `location.assign` / `location.replace` / `location.href =` 等**站内路径**硬编码时,**必须先核对项目实际路由**再下结论:
 
-### 5. 页面加载速度(首屏 / LCP / 包体积)
+**核对来源**(按框架,能读则读):
+- Vue Router:`src/router/index.ts` 或 `src/router/routes.*`
+- Nuxt:`pages/` 目录结构(文件路径即路由)
+- 小程序式 Nuxt 模块:`pages.json` 的 `pages`
+
+**🔴(路径不存在或必 404)**:
+- 硬编码 path 在路由表 / `pages/` 中**找不到对应页面**,如 `window.location.href = '/login'` 但项目无 `pages/login` 且无 `/login` 路由
+- 拦截器 401 / 4001 跳登录写死 `/login`,与项目实际登录 path 不一致(常见:`/user/login`、`/pages/login/login`)
+- 大小写 / 尾斜杠与路由定义不一致导致生产 404
+
+**🟡(路径存在但写法不当)**:
+- 应用内跳转用 `window.location.href` 整页刷新,破坏 SPA 状态、SSR hydration — 应改用:
+  - Nuxt:`await navigateTo('/login')` 或 `navigateTo({ name: 'login' })`
+  - Vue Router:`router.push('/login')` 或 `router.push({ name: 'Login' })`
+- 多处散落相同硬编码 path,未集中为路由常量(如 `ROUTES.LOGIN`)
+
+```ts
+// ❌ 未核对路由 — 项目可能根本没有 /login
+window.location.href = '/login'
+
+// ✅ Nuxt(已确认 pages/login.vue 存在)
+await navigateTo('/login')
+
+// ✅ Vue Router
+import { useRouter } from 'vue-router'
+const router = useRouter()
+router.push('/login')
+```
+
+报告须写明:**核对过哪些路由文件、项目实际登录 path 是什么、建议改成什么**。
+
+#### A4. 可访问性(仅 🔴 致命项)
+- `<div @click>` 假按钮(无 role / 键盘可达)
+- 关键图无 `alt`、表单无 `label`
+
+不深扫 a11y。
+
+---
+
+### B. 性能层(首屏 / LCP / 内存)
+
+#### B1. 页面加载速度(首屏 / LCP / 包体积)
 
 无页面 / 路由 / 资源改动则跳过。
 
@@ -94,61 +137,26 @@ const Chart = defineAsyncComponent(() => import('@/components/Chart.vue'))
 const { data } = await useFetch('/api/extra', { lazy: true })
 ```
 
-不报「可加 CDN」这种纯理论,必须对应 diff 具体位置。
+#### B2. 性能 / 内存
+- `addEventListener` / `setInterval` / `setTimeout` 未在 `onBeforeUnmount` 清理
+- 大列表(预期 >500 项且无虚拟化 / 分页)无虚拟滚动
+- computed 内 O(n²) 重计算(嵌套 `.filter` / `.find`、forEach 套 forEach)
+- 大对象 / 不需响应的数据用深 `ref`(应 `shallowRef` / `markRaw`)
 
-### 6. 错误处理
+---
+
+### C. 维护性 / 体验层
+
+#### C1. TypeScript 严重问题
+- 无理由的 `any` / `as any`
+- 可换类型守卫的 `as Foo`、危险 `!` 非空断言
+- 前端字段名与后端响应不一致(`userId` vs `user_id`)
+
+#### C2. 错误处理
 - 请求无 try/catch、`useFetch` 未消费 `error.value`
 - 列表 / 详情无 loading / 空态(用户可见白屏)
 
-### 7. 路由与跳转(硬编码 path)
-
-diff 出现 `window.location.href` / `location.assign` / `location.replace` / `location.href =` 等**站内路径**硬编码时,**必须先核对项目实际路由**再下结论:
-
-**核对来源**(按框架,能读则读):
-- Vue Router:`src/router/index.ts` 或 `src/router/routes.*`
-- Nuxt:`pages/` 目录结构(文件路径即路由)
-- 小程序式 Nuxt 模块:`pages.json` 的 `pages`
-
-**🔴(路径不存在或必 404)**:
-- 硬编码 path 在路由表 / `pages/` 中**找不到对应页面**,如 `window.location.href = '/login'` 但项目无 `pages/login` 且无 `/login` 路由
-- 拦截器 401 / 4001 跳登录写死 `/login`,与项目实际登录 path 不一致(常见:`/user/login`、`/pages/login/login`)
-- 大小写 / 尾斜杠与路由定义不一致导致生产 404
-
-**🟡(路径存在但写法不当)**:
-- 应用内跳转用 `window.location.href` 整页刷新,破坏 SPA 状态、SSR hydration — 应改用:
-  - Nuxt:`await navigateTo('/login')` 或 `navigateTo({ name: 'login' })`
-  - Vue Router:`router.push('/login')` 或 `router.push({ name: 'Login' })`
-- 多处散落相同硬编码 path,未集中为路由常量(如 `ROUTES.LOGIN`)
-
-**不报**:外链 `window.location.href = 'https://...'`、用户明确要求的新开窗口 `window.open(url, '_blank')`。
-
-```ts
-// ❌ 未核对路由 — 项目可能根本没有 /login
-window.location.href = '/login'
-
-// ✅ Nuxt(已确认 pages/login.vue 存在)
-await navigateTo('/login')
-
-// ✅ Vue Router
-import { useRouter } from 'vue-router'
-const router = useRouter()
-router.push('/login')
-```
-
-报告须写明:**核对过哪些路由文件、项目实际登录 path 是什么、建议改成什么**。
-
-### 8. 可访问性(仅 🔴)
-- `<div @click>` 假按钮(无 role / 键盘可达)
-- 关键图无 `alt`、表单无 `label`
-
-不深扫 a11y。
-
-### 9. fe-project-init 约定(存在 `src/config/design.ts` 时)
-- 端 / 单位混用:PC 缺 1200 容器、移动缺 rem + 750 封顶、小程序误用 pxtorem
-- 绕过 `config/env.ts` 直接拼 `import.meta.env.VITE_API_*`
-- 绕过 `api/request.ts` 裸 axios / fetch
-
-### 10. 设计纪律(仅 UI diff)
+#### C3. 设计纪律(仅 UI diff)
 
 触发:`.vue` template / `tailwind.config*` / 全局样式(main.scss / app.css / uni.scss) / 字体相关。**纯逻辑 diff 跳过**。
 
@@ -159,17 +167,36 @@ router.push('/login')
 - **响应式断点缺失** 🟡(已上线 → 🔴)— 新增大跨度组件 / 页面无任何 `md:` / `lg:` / `@media` → 提示补 375 / 768 / 1280 三档
 - **硬编码颜色字号** — 项目有 token 体系时 `color: #xxx` / `font-size: 14px` 裸值 → 仅在用户要求深度 review 时报为 🟢
 
-不报主观审美。
+#### C4. fe-project-init 约定(存在 `src/config/design.ts` 时)
+- 端 / 单位混用:PC 缺 1200 容器、移动缺 rem + 750 封顶、小程序误用 pxtorem
+- 绕过 `config/env.ts` 直接拼 `import.meta.env.VITE_API_*`
+- 绕过 `api/request.ts` 裸 axios / fetch
+
+---
+
+## 明确不报(节省注意力,这些一律跳过)
+
+- **代码风格**:缩进、空行、分号、引号、命名风格(camelCase / PascalCase) — 交给 lint / formatter
+- **主观审美**:配色搭配、字号大小、间距是否好看(违反「设计纪律」明列规则除外)
+- **未改动旧代码**:diff 之外的历史代码 — 除非本次 diff **连锁出 bug**
+- **纯理论建议**:「可加 CDN」「可加监控」「可拆微前端」「可加缓存层」等无具体 diff 落点的泛泛之谈
+- **test / mock / fixtures 文件**:这些文件里的风格、TS 严格度
+- **已被注释掉的代码**
+- **外链与新窗口跳转**:`window.location.href = 'https://...'`、`window.open(url, '_blank')`
+- **a11y 深扫**:WCAG AA 全量检查 — 仅报 A4 列出的致命项
+- **Bundle 大小数字**:不读源码无法准确评估,告知用户「具体大小请跑 `pnpm build` 看分析」
+
+---
 
 ## 执行流程
 
 ```
-1. 确定范围(询问或直接读 diff)
-2. 按维度扫 → 分级(🔴🟡;🟢 默认忽略)
+1. 默认读 git diff(+ --cached);无 diff 才弹选项
+2. 按 A → B → C 顺序扫 → 分级(🔴🟡;🟢 默认忽略)
 3. 输出首轮报告(每条:文件:行 — 问题 — 原因 — 建议改法+代码片段)
 4. 内部自省一次(不输出推理):假设全采纳,是否仍有 🔴 或明显 🟡 遗漏 / 连锁问题?
-   ├─ 是 → 同份报告追加「## 补充建议」(只列重大项)→ 收口
-   └─ 否 → 直接收口
+   ├─ 是 → 追加「## 补充建议」(只列重大项)→ 自省结论「追加 N 项」→ 收口
+   └─ 否 → 自省结论「未发现遗漏」→ 直接收口
 5. 等用户确认
 ```
 
@@ -186,7 +213,7 @@ router.push('/login')
 
 ## 输出格式
 
-按严重程度分组,**不按文件分组**:
+按严重程度分组,**不按文件分组**。**自省结论必出**(让用户看到自省真做了):
 
 ```
 ## vue-fe-review 完成(一轮)
@@ -208,6 +235,7 @@ router.push('/login')
 1. `index.vue:80` — 修完 props 后父组件传参缺类型守卫
    ...
 
+**自省结论**: 未发现遗漏  ← 或:追加 N 项补充
 **结论**: 共 X 必改 / Y 建议改 [+ Z 补充]。确认后我可按项修改。
 ```
 
@@ -215,6 +243,7 @@ router.push('/login')
 ```
 ## vue-fe-review 完成(一轮)
 **范围**: ...
+**自省结论**: 未发现遗漏
 **结论**: 未发现明显问题,可合入。
 ```
 

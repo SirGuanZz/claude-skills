@@ -30,10 +30,11 @@ description: >-
 
 **设计纪律(默认按用户级 `~/.claude/CLAUDE.md` 落地,所有端/框架通用)**：
 - **字体**:Google Fonts 双字族(Inter/Manrope 做正文 + Space Grotesk/DM Serif Display 做标题),`<head>` 加 `preconnect`,Tailwind `theme.extend.fontFamily` 注册 `font-sans` / `font-display`。
-- **配色**:在 `tailwind.config` 写 `theme.extend.colors.brand`(占位非紫色,如 `#0EA5E9` / `#F97316` / `#10B981` 三选一),禁默认紫蓝渐变。
+- **配色**:在 `tailwind.config` 写 `theme.extend.colors.brand`(占位非紫色,如 `#0EA5E9` / `#F97316` / `#10B981` 三选一),色阶**必须 50/100/200/300/400/500/600/700/800/900 十档全配**(否则渐变/hover fallback 到默认 sky/cyan 会掉对比度);禁默认紫蓝渐变。
 - **背景**:`App.vue` / `app.vue` / 根 layout 用渐变 + SVG 噪点纹理,禁纯白纯灰大面积铺底。
 - **动效**:交互组件至少一个 `transition` + `hover` / `:active` 反馈,150~400ms,`ease-out`。
 - **响应式**:375 / 768 / 1280 三档必须成立。
+- **对比度铁律(必查)**:正文与背景对比度 ≥ 4.5:1,大字号(≥18px 或 14px 加粗)≥ 3:1。落地三条:① 浅底(slate-50/white/渐变浅色)上正文用 `text-slate-700` 起步、副文用 `text-slate-600`、标题 `text-slate-900`,**禁** `text-slate-300/400/500` 当正文;② 渐变文字(`bg-clip-text`)起止两端都必须落在 `brand-600` 及以上深色档(`from-brand-700 via-brand-600 to-brand-500` 是安全模板,**禁** `to-brand-300/400`);③ hover 态颜色变化幅度 ≥ 一档色阶,且变化后仍满足 4.5:1。
 
 **Vue Router 5.x 雷区(create-vue 自 2026 起默认拉 v5,非经典 v4)**:
 - 路由**全部同步 import**,首屏页面禁止 `() => import()`(scaffold 默认会给 AboutView 加,**必须改回**)。
@@ -164,7 +165,7 @@ const userRequest = createRequest('user')
 □ 2. .gitignore 含 .env.local / dist
 □ 3. config/design.ts 与端/自适应一致
 □ 4. 端适配: PC固定1200 | PC+自适应→媒体查询 | 移动 Sass→flexible+pxtorem | 移动 Tailwind→无 pxtorem
-□ 5. 设计纪律: Google Fonts 双字族(Inter+Space Grotesk 默认) + tailwind.config 注册 font-sans/font-display + theme.extend.colors.brand 非紫调色板
+□ 5. 设计纪律: Google Fonts 双字族(Inter+Space Grotesk 默认) + tailwind.config 注册 font-sans/font-display + theme.extend.colors.brand **十档全配**(50~900)非紫调色板 + 浅底正文 ≥ slate-700 / 标题 slate-900 / 渐变文字止于 brand-500 不再浅(对比度 ≥ 4.5:1)
 □ 6. 有接口: .env.example + .env.development/.production + config/env.ts + api/request + dev proxy
 □ 7. 有接口: types/api.d.ts + utils/message.ts;纯静态:仅 utils/message(可选,按 UI 库)
 □ 8. UI 库已安装且已在 main.ts / nuxt.config 注册
@@ -252,13 +253,19 @@ export default {
       },
       colors: {
         // 占位主色:三选一,禁紫色。生成时随机或按项目气质挑
+        // 必须配齐 50~900 十档,否则 from-brand-X / hover:bg-brand-X 渐变会 fallback 到默认色,掉对比度
         brand: {
-          50:  '#F0F9FF', 100: '#E0F2FE', 500: '#0EA5E9',
-          600: '#0284C7', 700: '#0369A1', 900: '#0C4A6E',
+          50:  '#F0F9FF', 100: '#E0F2FE', 200: '#BAE6FD', 300: '#7DD3FC',
+          400: '#38BDF8', 500: '#0EA5E9', 600: '#0284C7', 700: '#0369A1',
+          800: '#075985', 900: '#0C4A6E',
         },
-        // 备选:橙 #F97316 / 绿 #10B981 / 玫红 #E11D48 / 琥珀 #F59E0B
+        // 备选色阶(全 10 档,挑一组替换上面的 brand):
+        // 橙: 50:#FFF7ED 100:#FFEDD5 200:#FED7AA 300:#FDBA74 400:#FB923C 500:#F97316 600:#EA580C 700:#C2410C 800:#9A3412 900:#7C2D12
+        // 绿: 50:#ECFDF5 100:#D1FAE5 200:#A7F3D0 300:#6EE7B7 400:#34D399 500:#10B981 600:#059669 700:#047857 800:#065F46 900:#064E3B
+        // 玫红 / 琥珀同理,在 tailwindcss.com/docs/customizing-colors 里挑十档
       },
       backgroundImage: {
+        // 渐变光斑保持低饱和,真正的视觉重量靠文字与卡片;alpha 0.18~0.22 是 slate-50 底上"看得见但不抢戏"的甜区
         'hero-gradient': 'radial-gradient(at 20% 0%, rgba(14,165,233,0.18), transparent 50%), radial-gradient(at 80% 100%, rgba(16,185,129,0.15), transparent 50%)',
       },
     },
@@ -273,9 +280,15 @@ export default {
 @tailwind components;
 @tailwind utilities;
 
-html, body { @apply font-sans text-slate-900 antialiased; }
-h1, h2, h3 { @apply font-display tracking-tight; }
+/* 浅底正文起步色 slate-700,副文 slate-600,标题 slate-900 — 满足 4.5:1 对比度 */
+html, body { @apply font-sans text-slate-700 antialiased bg-slate-50; }
+h1, h2, h3, h4 { @apply font-display tracking-tight text-slate-900; }
+p { @apply text-slate-700; }
+.text-muted { @apply text-slate-600; }      /* 副文/说明文字,仍 ≥ 4.5:1 */
+a { @apply text-brand-700 hover:text-brand-800 transition-colors; }
 ```
+
+**禁止用 `text-slate-300/400/500` 作正文色**(在 slate-50 底上对比度不足 4.5:1);仅可用于装饰性图标/分隔线。
 
 报告中提示用户:配色为占位色,可在 `tailwind.config` 替换主题色。
 
@@ -284,14 +297,30 @@ h1, h2, h3 { @apply font-display tracking-tight; }
 仍注入 Google Fonts。`src/styles/main.scss`:
 
 ```scss
-$brand-500: #0EA5E9;
-$brand-600: #0284C7;
+// 主色十档 — 必须全配,渐变与 hover 才不会 fallback 到默认色掉对比度
+$brand-50:  #F0F9FF; $brand-100: #E0F2FE; $brand-200: #BAE6FD; $brand-300: #7DD3FC;
+$brand-400: #38BDF8; $brand-500: #0EA5E9; $brand-600: #0284C7; $brand-700: #0369A1;
+$brand-800: #075985; $brand-900: #0C4A6E;
+
+// 文字色阶 — 浅底上 ≥ 4.5:1
+$text-heading: #0F172A;  // slate-900
+$text-body:    #334155;  // slate-700
+$text-muted:   #475569;  // slate-600,副文/说明,仍达标
+
 :root {
   --font-sans: 'Inter', system-ui, sans-serif;
   --font-display: 'Space Grotesk', 'Inter', sans-serif;
 }
-html, body { font-family: var(--font-sans); color: #0F172A; -webkit-font-smoothing: antialiased; }
-h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.01em; }
+html, body {
+  font-family: var(--font-sans);
+  color: $text-body;
+  background: #F8FAFC;
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, h4 { font-family: var(--font-display); color: $text-heading; letter-spacing: -0.01em; }
+p { color: $text-body; }
+.text-muted { color: $text-muted; }
+a { color: $brand-700; transition: color .2s ease-out; &:hover { color: $brand-800; } }
 ```
 
 ---
@@ -426,7 +455,7 @@ src/layouts/DefaultLayout.{vue,tsx}  components/layout/{AppHeader,AppFooter}  co
 
 Sass 项目:`.page-wrapper { background: radial-gradient(at 20% 0%, rgba(14,165,233,.12), transparent 50%), radial-gradient(at 80% 100%, rgba(16,185,129,.10), transparent 50%), #F8FAFC; }`,噪点同上以伪元素 `::before` 叠加。
 
-**Header 字体层次**:logo 用 `font-display`,导航用 `font-sans` 中等字重(500~600),活跃态用 `text-brand-600` + 下划线动效(`transition-all duration-200`)。
+**Header 字体层次**:logo 用 `font-display` + `text-slate-900`,导航默认态 `text-slate-700` 中等字重(500~600),hover 升到 `text-brand-700` + 下划线动效(`transition-all duration-200`),活跃态 `text-brand-800 font-semibold` + 底部 2px brand-600 横线。**禁** `text-slate-400/500` 当导航默认态(对比度不够)。
 
 Popup:`v-model`/`title`/slots,过渡用 `transition` 包 `opacity` + `translate-y`,150~250ms `ease-out`。有接口+会员=是:Header 右侧登录/头像下拉。
 
@@ -472,8 +501,8 @@ DefaultLayout 里 `<RouterView />` 裸写即可,**默认不加** transition / Su
 
 落地"有审美的样板首页",必须包含:
 
-1. **Hero 区**:大字标题(`font-display` + `text-4xl md:text-6xl` + `tracking-tight` + 渐变文字 `bg-gradient-to-r from-brand-600 to-brand-400 bg-clip-text text-transparent`),副标题正文字族,CTA 按钮带 hover 微动效(`hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200`)。
-2. **Feature Grid**:3 张卡片,圆角 `rounded-2xl`,`shadow-sm` + `hover:shadow-xl` + `hover:-translate-y-1` + `transition`,卡片内图标 + 标题 + 描述,字号至少两层。
+1. **Hero 区**:大字标题(`font-display` + `text-4xl md:text-6xl` + `tracking-tight`)。**渐变文字必须 `from-brand-800 via-brand-600 to-brand-500`**(三停止点全在深色档,浅底对比度 ≥ 4.5:1);**禁** `to-brand-300/400`(实测在 `bg-slate-50` 上对比度跌到 3:1 以下,主标题读不清)。副标题用 `text-slate-700` 正文字族,**禁** `text-slate-400/500`。CTA 按钮 `bg-brand-700 text-white hover:bg-brand-800` + `hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200`(白字在 brand-700 底上对比度达标)。
+2. **Feature Grid**:3 张卡片,`bg-white/90 backdrop-blur` 底(渐变背景透出但保证文字底色),圆角 `rounded-2xl`,`shadow-sm` + `hover:shadow-xl` + `hover:-translate-y-1` + `transition`,卡片内图标(用 `text-brand-700`,**非** `text-brand-400`) + 标题(`text-slate-900 font-semibold`) + 描述(`text-slate-600`),字号至少两层。
 3. **响应式**:`grid-cols-1 md:grid-cols-3`,375 / 768 / 1280 三档不溢出。
 4. **有接口 + dev 模式** 才在页脚 `<details>` 折叠区里展示 `API_BASE` + `DESIGN`(`if (import.meta.env.DEV)` 包裹),不污染审美。纯静态首页不展示这些。
 
@@ -497,11 +526,12 @@ DefaultLayout 里 `<RouterView />` 裸写即可,**默认不加** transition / Su
 
 ## 设计纪律(继承自 ~/.claude/CLAUDE.md)
 - 字体:Inter(正文) + Space Grotesk(标题),已通过 Google Fonts 注入
-- 主色:占位 brand 色阶在 tailwind.config(或 main.scss),按品牌替换
+- 主色:占位 brand 色阶(50~900 十档)在 tailwind.config(或 main.scss),按品牌替换;**禁紫色**
+- 文字对比度:浅底正文 `text-slate-700`、副文 `text-slate-600`、标题 `text-slate-900`,渐变文字 `from-brand-800 via-brand-600 to-brand-500`,**对比度 ≥ 4.5:1**
 - 背景:渐变 + 噪点,禁纯白纯灰大面积铺底
 - 动效:交互组件 hover/active 微动效,150~400ms ease-out
 - 响应式:375 / 768 / 1280 三断点必须成立
-- 禁:紫色背景或主题色、默认系统字体、SaaS 模板风、零动效静态页
+- 禁:紫色背景或主题色、默认系统字体、SaaS 模板风、零动效静态页、`text-slate-300/400/500` 当正文、`to-brand-300/400` 当主标题色
 ```
 
 ---
@@ -523,7 +553,7 @@ cd <project> && npm install && npm run dev && npm run build && npm run typecheck
 | 通用 | UI 库组件 build 通过 |
 | Vue 路由 | router 全同步 import;DefaultLayout 内 `<RouterView />` 裸写,无 transition/Suspense |
 | 路由切换 | dev 起服后**告知用户手测**:点 Header 各 nav 来回切,无空白(SPA 行为 build 验不出) |
-| 设计纪律 | Google Fonts 已 preconnect 且加载;`font-display` 在 h1/h2 生效;`brand` 色阶非紫色;根容器有渐变+噪点;首页含 hover 微动效与字号≥2 层 |
+| 设计纪律 | Google Fonts 已 preconnect 且加载;`font-display` 在 h1/h2 生效;`brand` 色阶**十档全配且非紫色**;根容器有渐变+噪点;首页含 hover 微动效与字号≥2 层;**正文用 slate-700/标题 slate-900/渐变文字止于 brand-500**(浏览器 devtools 取色对比度 ≥ 4.5:1,无 `text-slate-300/400`、无 `to-brand-300/400` 当主标题色) |
 | 代码注释 | 按「步骤 0」清单逐项核对:文件头三段式 / 拦截器与路由分段 / 接口函数 JSDoc / `.env.example` 行尾 `#` / README 目录导读,缺一即未通过 |
 
 失败 → 自行修到 build + typecheck 通过。
@@ -557,7 +587,7 @@ cd <project> && npm install && npm run dev && npm run build && npm run typecheck
 4. **PC+自适应** — viewport+媒体查询,不引入 rem 体系;**移动 H5** Sass 必须 flexible+pxtorem(75)。
 5. **有接口** — `.env*`+`env.ts`+request 多实例+dev proxy 四件套齐全。
 6. **UI 装必注册**;**DefaultLayout+路由按框架落地**。
-7. **设计纪律必落地** — Google Fonts 双字族 + `brand` 非紫色阶 + 根容器渐变噪点 + 首页样板含微动效;**禁紫色 / 默认系统字体 / 纯白铺底 / 零动效**。
+7. **设计纪律必落地** — Google Fonts 双字族 + `brand` **十档全配**非紫色阶 + 根容器渐变噪点 + 首页样板含微动效 + **正文/标题/渐变文字浅底对比度 ≥ 4.5:1**(slate-700 起步,渐变止于 brand-500);**禁紫色 / 默认系统字体 / 纯白铺底 / 零动效 / `text-slate-300/400/500` 当正文 / `to-brand-300/400` 当主标题色**。
 8. **Vue 路由保底** — 路由全同步 import(覆盖 scaffold 默认懒加载),DefaultLayout 用裸 `<RouterView />`,**默认不上 transition/Suspense**(vue-router 5.x 组合会白屏)。
 9. **交付前 dev+build+typecheck 必须通过**;SPA 路由切换属客户端行为,显式告知用户手测。
 10. **骨架必带中文注释** — 严格按「步骤 0」清单与示例风格落地:WHY 不 WHAT、中文为主、文件头三段式、禁废话注释;清单缺一视为未完成。
