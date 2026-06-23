@@ -167,6 +167,7 @@ export function useXxx(...) {
 5. **样式跟项目方案走**：tailwind 项目就全 class，不混 `<style scoped>`；用了 unocss 就不要再写 tailwind。
 6. **Nuxt 自动导入要用上**：`ref` / `computed` / `useRoute` / `useFetch` 这些项目里自动导入了就**不要手动 import**（多余的 import 会被 lint 警告）。读 `nuxt.config.ts` 的 `imports` 配置确认。
 7. **类型不使用 `any`**：宁可写 `unknown` + 类型守卫，也不用 `any` 蒙混。第三方库类型缺失才允许 `any`，并在旁边注明。
+8. **输出风格** — 中文回复 / 进度更新 / 完成总结 / 自检结论一律**避免使用斜体**(`*文字*` / `_文字_`);需要强调统一用粗体,引用文件 / 命令 / 字段名用反引号。生成的代码注释里也不要用斜体强调。
 
 ---
 

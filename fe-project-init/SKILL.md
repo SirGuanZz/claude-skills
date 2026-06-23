@@ -591,3 +591,4 @@ cd <project> && npm install && npm run dev && npm run build && npm run typecheck
 8. **Vue 路由保底** — 路由全同步 import(覆盖 scaffold 默认懒加载),DefaultLayout 用裸 `<RouterView />`,**默认不上 transition/Suspense**(vue-router 5.x 组合会白屏)。
 9. **交付前 dev+build+typecheck 必须通过**;SPA 路由切换属客户端行为,显式告知用户手测。
 10. **骨架必带中文注释** — 严格按「步骤 0」清单与示例风格落地:WHY 不 WHAT、中文为主、文件头三段式、禁废话注释;清单缺一视为未完成。
+11. **输出风格** — 中文回复 / 进度更新 / 完成报告 / README 一律**避免使用斜体**(`*文字*` / `_文字_`);需要强调统一用粗体,引用文件 / 命令 / 字段名用反引号。代码注释里也不要用斜体强调。
