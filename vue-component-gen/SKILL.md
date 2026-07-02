@@ -62,7 +62,7 @@ description: >-
 
 ### 0. 审美默认值（无参照组件 / Tailwind 项目时强制套用）
 
-落地用户级 `~/.claude/CLAUDE.md` 的设计纪律。**有参照组件时严格 follow 参照,本节不生效**;但即使 follow 参照,也要避开下方「禁项」。
+落地用户级 `~/.claude/CLAUDE.md` §3（设计默认）。**有参照组件时严格 follow 参照,§3 不生效**;但即使 follow 参照,也要避开下方「禁项」。
 
 **默认产出要素**:
 - **微动效**:交互组件(按钮/卡片/链接)至少一个过渡 — `transition-all duration-200 ease-out`,hover 反馈 `hover:-translate-y-0.5 hover:shadow-md` 或 `hover:bg-brand-50`,active 反馈 `active:scale-[0.98]`

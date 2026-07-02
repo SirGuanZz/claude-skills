@@ -28,7 +28,7 @@ description: >-
 **Pinia / Zustand**：问题 3=有接口 **且** 问题 9=是 时装;脚手架 `--pinia` 同理。  
 **Tailwind / UnoCSS + 移动 H5**：**禁止** postcss-pxtorem;改 `theme.extend` 按 750 稿配 spacing/fontSize,或用 `rem` 直接写。
 
-**设计纪律(默认按用户级 `~/.claude/CLAUDE.md` 落地,所有端/框架通用)**：
+**设计纪律(落地用户级 `~/.claude/CLAUDE.md` §3（设计默认）;所有端/框架通用)**：
 - **字体**:Google Fonts 双字族(Inter/Manrope 做正文 + Space Grotesk/DM Serif Display 做标题),`<head>` 加 `preconnect`,Tailwind `theme.extend.fontFamily` 注册 `font-sans` / `font-display`。
 - **配色**:在 `tailwind.config` 写 `theme.extend.colors.brand`(占位非紫色,如 `#0EA5E9` / `#F97316` / `#10B981` 三选一),色阶**必须 50/100/200/300/400/500/600/700/800/900 十档全配**(否则渐变/hover fallback 到默认 sky/cyan 会掉对比度);禁默认紫蓝渐变。
 - **背景**:`App.vue` / `app.vue` / 根 layout 用渐变 + SVG 噪点纹理,禁纯白纯灰大面积铺底。
@@ -68,7 +68,7 @@ description: >-
 
 骨架代码须让**后续接手的人不读 SKILL 也能懂**。先看完本节再写任何文件。
 
-### 风格铁律（4 条,继承自用户级 `~/.claude/CLAUDE.md`）
+### 风格铁律（4 条,与 `~/.claude/CLAUDE.md` §5 输出风格一致;本 skill 细化约定）
 
 1. **WHY 不 WHAT** — 解释为什么这样写(约束、副作用、修改注意),不解释字面在做什么(变量/函数名能看懂的别注)。
 2. **中文为主,术语保留英文** — baseURL / interceptor / middleware / token / composable 等不翻译。
@@ -224,7 +224,7 @@ node_modules / dist / .DS_Store / *.local / .env.local / .env.*.local
 
 ### 设计 token + Google Fonts（默认必做,样式=Tailwind 时强制）
 
-落地用户级 `~/.claude/CLAUDE.md` 的设计纪律。
+落地用户级 `~/.claude/CLAUDE.md` §3（设计默认）。
 
 **1. Google Fonts 注入**
 
@@ -524,7 +524,7 @@ DefaultLayout 里 `<RouterView />` 裸写即可,**默认不加** transition / Su
 | src/layouts/ | 全局布局,PC/移动结构差异见文件头注释 |
 | src/stores/user.ts | 登录态(有会员时) |
 
-## 设计纪律(继承自 ~/.claude/CLAUDE.md)
+## 设计纪律(继承自 ~/.claude/CLAUDE.md §3（设计默认）)
 - 字体:Inter(正文) + Space Grotesk(标题),已通过 Google Fonts 注入
 - 主色:占位 brand 色阶(50~900 十档)在 tailwind.config(或 main.scss),按品牌替换;**禁紫色**
 - 文字对比度:浅底正文 `text-slate-700`、副文 `text-slate-600`、标题 `text-slate-900`,渐变文字 `from-brand-800 via-brand-600 to-brand-500`,**对比度 ≥ 4.5:1**

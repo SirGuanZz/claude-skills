@@ -28,7 +28,7 @@ description: >-
 **登录页**：**默认必有**(不依赖问题 4 会员),含手机号+验证码+本机号码一键登录。  
 **Pinia**：仅问题 4 选「是」时装;登录态 `pinia-plugin-persistedstate` + `uni.setStorageSync`。
 
-**设计纪律(默认按用户级 `~/.claude/CLAUDE.md` 落地)**:小程序受网络字体限制,不引 Google Fonts,改为系统字体堆叠 + token 化样式:
+**设计纪律(落地用户级 `~/.claude/CLAUDE.md` §3（设计默认）)**:小程序受网络字体限制,不引 Google Fonts,改为系统字体堆叠 + token 化样式:
 - **字体**:`uni.scss` 定义 `--font-sans` / `--font-display`,优先 PingFang SC / SF Pro Display,正文与标题用不同字重拉开层次,**禁默认系统字号字重一锅煮**。
 - **配色**:`uni.scss` 定义 `--color-brand` 非紫色阶(占位 `#0EA5E9` 系)+ 中性色阶,禁默认紫蓝渐变。
 - **背景**:页面根容器渐变 + 装饰光斑(用 `view` + `linear-gradient` / `radial-gradient`),禁纯白纯灰大面积铺底。
@@ -70,7 +70,7 @@ description: >-
 
 骨架代码须让**后续接手的人不读 SKILL 也能懂**。先看完本节再写任何文件。
 
-### 风格铁律(4 条,继承自用户级 `~/.claude/CLAUDE.md`)
+### 风格铁律(4 条,与 `~/.claude/CLAUDE.md` §5 输出风格一致;本 skill 细化约定)
 
 1. **WHY 不 WHAT** — 解释为什么这样写(约束、副作用、修改注意),不解释字面在做什么(变量/函数名能看懂的别注)。
 2. **中文为主,术语保留英文** — baseURL / token / envVersion / rpx / tabBar / openid 等不翻译。
@@ -306,7 +306,7 @@ export const BIZ = {
 
 ### `src/uni.scss`(全局设计 token,默认必写)
 
-落地用户级 `~/.claude/CLAUDE.md` 的设计纪律:
+落地用户级 `~/.claude/CLAUDE.md` §3（设计默认）:
 
 ```scss
 /* ===== 颜色:占位 brand 非紫色阶,按品牌替换 ===== */
@@ -604,7 +604,7 @@ npm run build:mp-weixin # 产物 dist/build/mp-weixin
 API_MAP + IS_TEST + envVersion;新增域名改 config/env.ts
 ## 调试
 开发者工具勾选不校验合法域名;上线配置 request 合法域名;填写 manifest appid
-## 设计纪律(继承自 ~/.claude/CLAUDE.md)
+## 设计纪律(继承自 ~/.claude/CLAUDE.md §3（设计默认）)
 - 字体:系统字体堆叠(PingFang SC / SF Pro 优先),正文与标题用不同字重拉层次
 - 主色:占位 brand 色阶在 uni.scss,按品牌替换
 - 背景:渐变 + 装饰光斑,禁纯白纯灰大面积铺底

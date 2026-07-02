@@ -1,10 +1,11 @@
 ---
 name: vue-fe-review
 description: >-
-  Review Vue3 + TS + Nuxt 代码,专抓响应式陷阱、SSR 反模式、路由硬编码跳转、性能/页面加载速度问题。
+  Review Vue3 + TS + Nuxt 代码,专抓响应式陷阱、SSR 反模式、路由硬编码跳转、加载速度、类型完整性、设计纪律。
   Use when the user says "review 一下", "看看这段代码", "帮我审一下", "前端 review",
   "这代码有啥问题", or /vue-fe-review.
   一轮输出完整结论;提完建议后自省一次,仅优化空间大时补充,否则收口。只报告不擅自改代码。
+  安全漏洞深扫 / 测试覆盖清单不在本 skill 范围,请配合 `pre-pr-review`。
 ---
 
 # vue-fe-review: Vue3 + Nuxt 代码 review
@@ -18,6 +19,7 @@ description: >-
 2. **一轮 + 自省一次** — 扫描 → 首轮报告 → 内部自省一次 → **输出自省结论** → 收口。禁止第三轮思考。
 3. **自省判定** — 假设用户已采纳全部首轮建议,**仍有 🔴 或明显 🟡** 遗漏 / 连锁问题 → 同份报告追加「补充建议」,自省结论标记「追加 N 项」;只剩锦上添花、风格、主观审美 → 直接收口,自省结论标记「未发现遗漏」。
 4. **无 🔴🟡 = 可合入** — 不凑 🟢、不编造优化点、不翻旧代码的账(除非本次 diff 连锁出 bug)。🟢 仅在用户明确「深度 review」时输出。
+5. **范围边界** — 本 skill 只做 Vue3 + Nuxt 专项:响应式 / SSR / 路由 / 加载速度 / 内存 / TS / 错误处理 / 设计纪律。**安全深扫**(注入 / XSS / 敏感信息 / 开放重定向 / SSR 私密配置泄漏)和**测试覆盖清单**由 `pre-pr-review` 负责,遇到只在末尾提醒用户"建议再跑一次 pre-pr-review",不在本 skill 里出结论。
 
 ## 启动:确定范围
 
@@ -158,7 +160,7 @@ const { data } = await useFetch('/api/extra', { lazy: true })
 
 #### C3. 设计纪律(仅 UI diff)
 
-触发:`.vue` template / `tailwind.config*` / 全局样式(main.scss / app.css / uni.scss) / 字体相关。**纯逻辑 diff 跳过**。
+触发:`.vue` template / `tailwind.config*` / 全局样式(main.scss / app.css / uni.scss) / 字体相关。**纯逻辑 diff 跳过**。对照用户级 `~/.claude/CLAUDE.md` §3 禁项;项目已有 token / 参照组件 / 存量样式时以项目为准。
 
 - **紫色禁用** 🟡 — `purple-*` / `violet-*` / `indigo-*` Tailwind class、紫色 hex(`#6B21A8` `#7C3AED` `#8B5CF6` `#A78BFA` 等)、`from-purple` / `to-violet` 渐变 → 替换为项目 `brand-*` token
 - **大色块纯白纯灰** 🟡(已上线 → 🔴)— 页面根容器 / hero 全屏 `bg-white` / `bg-gray-50` / `bg-gray-100`,无渐变 / 纹理 / 边框
@@ -185,6 +187,8 @@ const { data } = await useFetch('/api/extra', { lazy: true })
 - **外链与新窗口跳转**:`window.location.href = 'https://...'`、`window.open(url, '_blank')`
 - **a11y 深扫**:WCAG AA 全量检查 — 仅报 A4 列出的致命项
 - **Bundle 大小数字**:不读源码无法准确评估,告知用户「具体大小请跑 `pnpm build` 看分析」
+- **安全深扫**:注入 / XSS / 敏感信息泄漏 / 开放重定向 / 鉴权绕过 / SSR 私密配置泄漏 — 交给 `pre-pr-review`,本 skill 只在末尾提醒
+- **测试覆盖清单**:单测 / e2e / 手工验证清单 — 交给 `pre-pr-review`
 
 ---
 
@@ -235,6 +239,10 @@ const { data } = await useFetch('/api/extra', { lazy: true })
 ## 补充建议(仅自省后空间大时输出,否则整节省略)
 1. `index.vue:80` — 修完 props 后父组件传参缺类型守卫
    ...
+
+## 疑似安全 / 测试覆盖(建议再跑 pre-pr-review)
+- `file:line` — 一句话说明看到了什么,不下结论
+- 如果没有,整节省略
 
 **自省结论**: 未发现遗漏  ← 或:追加 N 项补充
 **结论**: 共 X 必改 / Y 建议改 [+ Z 补充]。确认后我可按项修改。
